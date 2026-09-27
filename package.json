@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "vite-plugin-monaco-editor": "^1.1.0",
+    "vite-tsconfig-paths": "^6.1.1"
+  }
+}
