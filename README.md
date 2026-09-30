@@ -175,6 +175,7 @@ User (1) ───────────< ReviewAttempt (N) >─────�
     ├── scripts/
     │   └── create-db-tunnel-user.sh   # compte SSH restreint pour accéder à la base
     ├── docker-compose.yml        # stack unique, profils `dev` et `prod`
+    ├── package.json              # raccourcis de dev — pas un workspace
     ├── .env.example
     └── README.md
 
@@ -193,22 +194,34 @@ En dev, on ne conteneurise volontairement pas le front et l'API : `npm run dev` 
 
 ### Démarrage
 
-    # 0. Une seule fois après le clone
+Une seule fois après le clone :
+
+    npm run setup                # installe les dépendances des trois niveaux
     cp .env.example .env
+    cp backend/.env.example backend/.env    # puis y mettre le mot de passe du serveur
     docker network create web    # réseau de Traefik ; sur le VPS il existe déjà
-    cd backend && cp .env.example .env && npm install && cd ..
-    cd frontend && npm install && cd ..
 
-    # 1. Tunnel vers la base du VPS (terminal 1, ne rend pas la main)
-    ssh -N -L 5432:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com
+Ensuite, au quotidien, **une seule commande** :
 
-    # 2. API (terminal 2)
-    cd backend && npm run dev
+    npm run dev
 
-    # 3. Front (terminal 3)
-    cd frontend && npm run dev
+Elle démarre le tunnel SSH, l'API et le front dans un terminal unique, avec des sorties préfixées et colorées. `Ctrl+C` arrête les trois d'un coup — le tunnel compris, qui sinon resterait ouvert en arrière-plan.
 
-L'équipe partage la base du serveur, il n'y a donc pas de conteneur Postgres à démarrer au quotidien — voir la section suivante. Pour travailler hors ligne ou tester une migration destructrice, `docker compose --profile dev up -d` fournit une base locale jetable ; il faut alors adapter `DATABASE_URL` dans `backend/.env`.
+| Commande | Effet |
+|---|---|
+| `npm run dev` | Tunnel + API + front |
+| `npm run dev:local` | API + front seuls, sur une base locale |
+| `npm run dev:tunnel` | Le tunnel seul |
+| `npm run dev:api` / `dev:web` | Un service isolé |
+| `npm run db:up` / `db:down` | Base locale jetable (profil `dev`) |
+| `npm run build` | Compile backend puis frontend |
+| `npm run typecheck` | Vérifie les types des deux projets |
+
+Le `package.json` de la racine n'existe que pour ces raccourcis : il ne déclare aucune dépendance applicative et **n'est pas un workspace**. `frontend/` et `backend/` gardent leur `package.json` et leur `node_modules` propres, et restent utilisables indépendamment.
+
+Le choix de npm plutôt que d'un `Makefile` est délibéré : `make` n'est pas disponible par défaut sous Windows, alors que npm est déjà requis par les deux projets. Les raccourcis fonctionnent donc à l'identique sous Windows et sous Linux.
+
+L'équipe partage la base du serveur, il n'y a donc pas de conteneur Postgres à démarrer au quotidien — voir la section suivante. Pour travailler hors ligne ou tester une migration destructrice, `npm run db:up` fournit une base locale jetable ; il faut alors adapter `DATABASE_URL` dans `backend/.env` et lancer `npm run dev:local`.
 
 ### Schéma et migrations
 
