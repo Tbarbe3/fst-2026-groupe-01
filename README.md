@@ -192,6 +192,7 @@ En dev, on ne conteneurise volontairement pas le front et l'API : `npm run dev` 
 
     # 0. Une seule fois après le clone
     cp .env.example .env
+    docker network create web    # réseau de Traefik ; sur le VPS il existe déjà
 
     # 1. Base de données + Adminer
     docker compose --profile dev up -d
@@ -215,11 +216,20 @@ En développement, trois accès au choix, tous équivalents :
 * **Client graphique** (DataGrip, DBeaver, outil Base de données de WebStorm) — hôte `localhost`, port `5432`, mêmes identifiants.
 * **psql dans le conteneur** — `docker exec -it codehow-db psql -U codehow -d codehow`.
 
-En production, la base n'est publiée que sur la loopback du VPS. On l'atteint depuis son poste par un tunnel SSH :
+En production, deux accès selon qu'on a ou non un compte sur le VPS.
+
+**Sans accès au serveur — Adminer en ligne.** C'est la voie pour les membres de l'équipe qui n'ont pas de compte SSH : `https://<ADMINER_DOMAIN>`, puis deux authentifications successives.
+
+1. Une fenêtre BasicAuth du navigateur, gérée par Traefik avant que la requête n'atteigne le conteneur (identifiants issus de `ADMINER_BASIC_AUTH`).
+2. Le formulaire Adminer : serveur `postgres`, puis les identifiants Postgres du `.env` du serveur.
+
+PostgreSQL lui-même n'est **pas** joignable par une URL : il parle son propre protocole binaire, pas HTTP. Traefik ne peut router que des applications web, d'où le passage obligé par Adminer.
+
+**Avec un accès au serveur — tunnel SSH.** Postgres n'est publié que sur la loopback du VPS, un tunnel permet d'y brancher un vrai client graphique :
 
     ssh -L 5433:localhost:5432 thomas@thomasbarbe-server
 
-Le tunnel ouvert, on connecte son client graphique sur `localhost:5433` avec les identifiants du `.env` du serveur. Le port 5433 côté poste évite d'entrer en conflit avec le Postgres de développement s'il tourne déjà.
+Tunnel ouvert, on connecte son client sur `localhost:5433` avec les identifiants du `.env` du serveur. Le port 5433 côté poste évite le conflit avec le Postgres de développement s'il tourne déjà.
 
 ### Déploiement (VPS + Traefik)
 
@@ -244,14 +254,17 @@ Le volume `postgres-data` n'est pas touché par un rebuild, les données sont co
 
 **Routage.** Un seul domaine, deux routeurs Traefik :
 
-| Route | Service | Conteneur |
-|---|---|---|
-| `Host(DOMAIN) && PathPrefix(/api)` | Fastify, port 3000 | `codehow-api` |
-| `Host(DOMAIN)` | Nginx, port 80 | `codehow-front` |
+| Route | Service | Conteneur | Protection |
+|---|---|---|---|
+| `Host(DOMAIN) && PathPrefix(/api)` | Fastify, port 3000 | `codehow-api` | — |
+| `Host(DOMAIN)` | Nginx, port 80 | `codehow-front` | — |
+| `Host(ADMINER_DOMAIN)` | Adminer, port 8080 | `codehow-adminer` | BasicAuth Traefik |
+
+Deux enregistrements DNS A sont donc nécessaires : `DOMAIN` et `ADMINER_DOMAIN`, tous deux vers le VPS.
 
 Le routeur `/api` porte une `priority=100` pour passer devant celui du front. Le frontend appelle donc l'API en relatif (`fetch('/api/...')`) aussi bien en dev qu'en prod : aucune URL absolue dans le bundle, aucun CORS entre navigateur et API.
 
-**Cloisonnement réseau.** `postgres` n'est **pas** sur le réseau `web` : elle vit sur un réseau `internal` propre au projet, joignable uniquement par `backend`. Sans cela, tout conteneur d'un autre projet partageant `web` pourrait ouvrir une connexion sur le port 5432.
+**Cloisonnement réseau.** `postgres` n'est **pas** sur le réseau `web` : elle vit sur un réseau `internal` propre au projet, joignable uniquement par `backend` et `adminer`. Sans cela, tout conteneur d'un autre projet partageant `web` pourrait ouvrir une connexion sur le port 5432.
 
 ---
 

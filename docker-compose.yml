@@ -37,22 +37,40 @@ services:
     networks:
       - internal
 
-  # Interface web d'inspection de la base : http://localhost:8081
+  # Interface web d'inspection de la base.
+  #   En dev  : http://localhost:8081
+  #   En prod : https://${ADMINER_DOMAIN}, derrière le BasicAuth de Traefik.
+  #
+  # Exposer une console d'administration de base sur Internet n'est pas
+  # anodin : le BasicAuth est ce qui empêche la page de login d'Adminer
+  # d'être publiquement atteignable et scannée.
   adminer:
     image: adminer:5
     container_name: codehow-adminer
     restart: unless-stopped
-    profiles: [dev]
+    profiles: [dev, prod]
     ports:
       - '127.0.0.1:8081:8080'
     environment:
       ADMINER_DEFAULT_SERVER: postgres
       ADMINER_DESIGN: dracula
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.codehow-adminer.rule=Host(`${ADMINER_DOMAIN}`)"
+      - "traefik.http.routers.codehow-adminer.entrypoints=websecure"
+      - "traefik.http.routers.codehow-adminer.tls.certresolver=le"
+      - "traefik.http.services.codehow-adminer.loadbalancer.server.port=8080"
+      # Le hash bcrypt contient des `$`. Il est stocké dans le .env et non
+      # écrit ici en dur : Compose n'interpole pas le contenu des variables,
+      # ce qui évite d'avoir à doubler chaque `$` en `$$`.
+      - "traefik.http.routers.codehow-adminer.middlewares=codehow-adminer-auth"
+      - "traefik.http.middlewares.codehow-adminer-auth.basicauth.users=${ADMINER_BASIC_AUTH}"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
-      - internal
+      - web       # joignable par Traefik
+      - internal  # joint Postgres
 
   backend:
     build:
