@@ -229,6 +229,19 @@ Traefik tourne déjà sur le serveur et expose le réseau Docker externe `web`. 
     cp .env.example .env    # renseigner DOMAIN, POSTGRES_PASSWORD, GEMINI_API_KEY
     docker compose --profile prod up -d --build
 
+    # Vérifications
+    docker compose --profile prod ps
+    docker compose logs -f backend
+    curl -s https://<DOMAIN>/api/health
+
+Le `--profile prod` n'est pas optionnel : sans lui, seul `postgres` démarrerait, puisque c'est le seul service sans profil. Pour `logs` en revanche il est inutile, nommer un service active son profil automatiquement.
+
+Mises à jour ultérieures :
+
+    git pull && docker compose --profile prod up -d --build
+
+Le volume `postgres-data` n'est pas touché par un rebuild, les données sont conservées.
+
 **Routage.** Un seul domaine, deux routeurs Traefik :
 
 | Route | Service | Conteneur |
