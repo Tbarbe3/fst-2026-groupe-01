@@ -158,10 +158,36 @@ User (1) ───────────< ReviewAttempt (N) >─────�
 
 ## Stack technique
 
-* **Frontend :** React (avec Vite pour un bundle épuré ou Next.js en mode SSR/client) + Tailwind CSS.
-* **API Backend :** Node.js avec Fastify (ou Express) en TypeScript pour une empreinte mémoire réduite et une conteneurisation directe.
+* **Frontend :** React 19 + Vite + TypeScript + Tailwind CSS. Monaco Editor pour le diff viewer de l'écran de revue. Vite plutôt que Next.js : l'API vivant dans un service Fastify distinct, le SSR n'apporterait qu'un second runtime Node à déployer et la tentation de disperser la logique métier dans des route handlers.
+* **API Backend :** Node.js avec Fastify en TypeScript, pour une empreinte mémoire réduite et une conteneurisation directe.
 * **Base de données :** PostgreSQL (gestion relationnelle native des comptes et tentatives, colonnes JSONB pour la ground truth et les résultats).
 * **Hébergement :** Stack conteneurisée via Docker Compose (service API Node.js, conteneur PostgreSQL et reverse proxy Nginx) déployée sur VPS dédié (Hetzner, OVH) pour maîtriser l'infrastructure et les coûts.
+
+### Organisation du dépôt
+
+    fst-2026-groupe-01/
+    ├── frontend/            # React + Vite + TS — port 5173
+    ├── backend/             # Fastify + TS — port 3000, routes préfixées /api
+    ├── docker-compose.yml   # PostgreSQL de développement
+    └── README.md
+
+Les deux projets sont indépendants : chacun a son `package.json` et son `node_modules`, il n'y a pas de workspace racine. En développement, Vite relaie `/api` vers `http://localhost:3000`, ce qui évite au front de manipuler une URL absolue et supprime le CORS.
+
+### Démarrage
+
+    # 1. Base de données
+    docker compose up -d
+
+    # 2. API (terminal 1)
+    cd backend
+    cp .env.example .env     # puis renseigner GEMINI_API_KEY
+    npm install
+    npm run dev
+
+    # 3. Front (terminal 2)
+    cd frontend
+    npm install
+    npm run dev
 
 ---
 
