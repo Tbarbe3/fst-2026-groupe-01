@@ -51,18 +51,28 @@ mkdir -p "$SSH_DIR"
 
 # Les options en préfixe sont la vraie protection :
 #   command="/bin/false"      aucune commande exécutable
-#   permitopen="..."          seule destination autorisée pour un -L
+#   permitopen="..."          seules destinations autorisées pour un -L
 #   no-pty                    pas de terminal interactif
-readonly RESTRICTIONS='command="/bin/false",no-agent-forwarding,no-X11-forwarding,no-pty,permitopen="localhost:5432"'
+#
+# Les deux permitopen sont nécessaires : sshd compare des chaînes littérales
+# sans résoudre les noms, donc `-L 5432:127.0.0.1:5432` est refusé si seul
+# `localhost:5432` est autorisé — et réciproquement. Le message est alors
+# « administratively prohibited », qui ne désigne pas sa cause.
+readonly RESTRICTIONS='command="/bin/false",no-agent-forwarding,no-X11-forwarding,no-pty,permitopen="localhost:5432",permitopen="127.0.0.1:5432"'
 readonly ENTRY="$RESTRICTIONS $PUBLIC_KEY"
 
 touch "$AUTH_KEYS"
+
+# Une clé déjà présente est réécrite plutôt qu'ignorée : c'est ce qui permet
+# à une relance du script de corriger des restrictions devenues obsolètes.
 if grep -qF "$PUBLIC_KEY" "$AUTH_KEYS"; then
-  echo "Cette clé est déjà autorisée, rien à faire."
+  grep -vF "$PUBLIC_KEY" "$AUTH_KEYS" > "$AUTH_KEYS.tmp" || true
+  mv "$AUTH_KEYS.tmp" "$AUTH_KEYS"
+  echo "Clé déjà présente : entrée réécrite avec les restrictions à jour."
 else
-  echo "$ENTRY" >> "$AUTH_KEYS"
   echo "Clé ajoutée."
 fi
+echo "$ENTRY" >> "$AUTH_KEYS"
 
 # sshd refuse de lire ces fichiers s'ils sont accessibles à d'autres.
 chown -R "$USERNAME:$USERNAME" "$SSH_DIR"
@@ -71,11 +81,22 @@ chmod 600 "$AUTH_KEYS"
 
 cat <<EOF
 
-Terminé. Le développeur peut maintenant ouvrir le tunnel depuis son poste :
+Terminé. Le développeur peut maintenant ouvrir le tunnel depuis son poste,
+en remplaçant <vps> par un domaine qui résout vers ce serveur (celui du
+site fait l'affaire ; le nom d'hôte interne de la machine, lui, n'est pas
+résolvable depuis l'extérieur) :
 
-    ssh -N -L 5432:localhost:5432 $USERNAME@<hôte-du-vps>
+    ssh -N -L 5432:127.0.0.1:5432 $USERNAME@<vps>
 
-Tunnel ouvert, sa base est accessible sur localhost:5432 comme si elle
+Tunnel ouvert, sa base est accessible sur 127.0.0.1:5432 comme si elle
 était locale. La session ne rend pas la main : c'est normal, -N demande
 justement à ne rien exécuter.
+
+127.0.0.1 plutôt que localhost : sous Windows, localhost résout d'abord en
+::1, que le tunnel n'écoute pas, d'où un ECONNREFUSED trompeur.
+
+Si la connexion réclame un mot de passe, l'authentification par clé a
+échoué — ce compte n'en a aucun. Vérifier côté serveur :
+
+    sudo journalctl -u ssh -f        # puis retenter, la cause s'affiche
 EOF

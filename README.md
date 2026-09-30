@@ -200,7 +200,7 @@ En dev, on ne conteneurise volontairement pas le front et l'API : `npm run dev` 
     cd frontend && npm install && cd ..
 
     # 1. Tunnel vers la base du VPS (terminal 1, ne rend pas la main)
-    ssh -N -L 5432:localhost:5432 dbtunnel@thomasbarbe-server
+    ssh -N -L 5432:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com
 
     # 2. API (terminal 2)
     cd backend && npm run dev
@@ -230,7 +230,7 @@ Postgres n'étant pas exposé sur Internet, on y accède par un tunnel SSH. Chaq
 
 **Travailler** (le tunnel occupe un terminal, `-N` ne rend pas la main) :
 
-    ssh -N -L 5432:localhost:5432 dbtunnel@thomasbarbe-server
+    ssh -N -L 5432:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com
 
 La base distante est alors sur `localhost:5432`, donc `DATABASE_URL` garde la forme d'une URL locale — seul le mot de passe change, c'est celui du `.env` du serveur.
 
@@ -268,7 +268,7 @@ Il s'agit de la base du VPS, celle que l'équipe partage. Trois accès, du plus 
 
 PostgreSQL n'est **pas** joignable par une URL : il parle son propre protocole binaire, pas HTTP. Traefik ne peut router que des applications web, d'où le passage obligé par Adminer ou par un tunnel.
 
-Si le profil `dev` tourne en parallèle, sa base locale occupe déjà le port 5432 et le tunnel échouera. Dans ce cas, forwarder sur un autre port : `ssh -N -L 5433:localhost:5432 dbtunnel@thomasbarbe-server`, et se connecter sur `localhost:5433`.
+Si le profil `dev` tourne en parallèle, sa base locale occupe déjà le port 5432 et le tunnel échouera. Dans ce cas, forwarder sur un autre port : `ssh -N -L 5433:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com`, et se connecter sur `localhost:5433`.
 
 ### Déploiement (VPS + Traefik)
 
