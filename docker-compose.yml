@@ -56,13 +56,16 @@ services:
       ADMINER_DESIGN: dracula
     labels:
       - "traefik.enable=true"
+      # Ce conteneur est sur deux réseaux. Sans cette ligne, Traefik peut
+      # retenir son adresse sur `internal`, qu'il ne sait pas joindre :
+      # l'authentification passe puis la requête expire (Gateway Timeout).
+      - "traefik.docker.network=web"
       - "traefik.http.routers.codehow-adminer.rule=Host(`${ADMINER_DOMAIN}`)"
       - "traefik.http.routers.codehow-adminer.entrypoints=websecure"
       - "traefik.http.routers.codehow-adminer.tls.certresolver=le"
       - "traefik.http.services.codehow-adminer.loadbalancer.server.port=8080"
-      # Le hash bcrypt contient des `$`. Il est stocké dans le .env et non
-      # écrit ici en dur : Compose n'interpole pas le contenu des variables,
-      # ce qui évite d'avoir à doubler chaque `$` en `$$`.
+      # Le hash bcrypt contient des `$`, qu'il faut doubler en `$$` dans le
+      # .env : Compose interpole les valeurs qu'il y lit.
       - "traefik.http.routers.codehow-adminer.middlewares=codehow-adminer-auth"
       - "traefik.http.middlewares.codehow-adminer-auth.basicauth.users=${ADMINER_BASIC_AUTH}"
     depends_on:
@@ -91,6 +94,9 @@ services:
       CORS_ORIGIN: https://${DOMAIN}
     labels:
       - "traefik.enable=true"
+      # Comme adminer, ce conteneur est sur `web` et `internal` : il faut
+      # désigner le réseau par lequel Traefik doit l'atteindre.
+      - "traefik.docker.network=web"
       # Règle plus spécifique que celle du front : Traefik calcule la priorité
       # d'après la longueur de la règle, /api gagne donc sur `/`. On la fixe
       # explicitement pour que ça ne dépende pas de ce détail.
