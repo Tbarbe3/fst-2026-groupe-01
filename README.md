@@ -207,6 +207,8 @@ Ensuite, au quotidien, **une seule commande** :
 
 Elle démarre le tunnel SSH, l'API et le front dans un terminal unique, avec des sorties préfixées et colorées. `Ctrl+C` arrête les trois d'un coup — le tunnel compris, qui sinon resterait ouvert en arrière-plan.
 
+Un `npm run check` s'exécute au préalable et signale ce qui manque. C'est ce qui évite le symptôme trompeur du démarrage sur un poste non initialisé : l'API sort aussitôt faute de `backend/.env`, les autres services reçoivent un `SIGTERM`, et la sortie n'affiche que `tunnel exited with SIGTERM` — un message qui désigne la victime, pas la cause.
+
 | Commande | Effet |
 |---|---|
 | `npm run dev` | Tunnel + API + front |
@@ -214,6 +216,7 @@ Elle démarre le tunnel SSH, l'API et le front dans un terminal unique, avec des
 | `npm run dev:tunnel` | Le tunnel seul |
 | `npm run dev:api` / `dev:web` | Un service isolé |
 | `npm run db:up` / `db:down` | Base locale jetable (profil `dev`) |
+| `npm run check` | Vérifie que le poste est prêt (`.env`, dépendances) |
 | `npm run build` | Compile backend puis frontend |
 | `npm run typecheck` | Vérifie les types des deux projets |
 

@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "description": "Orchestration des tâches de développement. Ce package.json ne déclare aucune dépendance applicative et n'est PAS un workspace : frontend/ et backend/ gardent leur propre package.json et leur propre node_modules.",
   "scripts": {
+    "check": "node scripts/check-setup.mjs",
+    "predev": "npm run check",
     "dev": "concurrently -k -n tunnel,api,web -c magenta,cyan,green \"npm:dev:tunnel\" \"npm:dev:api\" \"npm:dev:web\"",
+    "predev:local": "npm run check",
     "dev:tunnel": "ssh -N -L 5432:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com",
     "dev:api": "npm --prefix backend run dev",
     "dev:web": "npm --prefix frontend run dev",
