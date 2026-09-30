@@ -23,8 +23,11 @@ export const env = {
 
   databaseUrl: required('DATABASE_URL'),
 
-  // Brique IA (cf. README : générateur de scénario + juge évaluateur)
-  geminiApiKey: required('GEMINI_API_KEY'),
+  // Brique IA (cf. README : générateur de scénario + juge évaluateur).
+  // Volontairement pas `required()` : tant que la brique IA n'est pas
+  // écrite, une clé absente ne doit pas empêcher l'API de démarrer. La
+  // vérification se fait au point d'utilisation, via getGeminiApiKey().
+  geminiApiKey: process.env['GEMINI_API_KEY'] ?? '',
 
   // Origine autorisée pour le front en dev ; en prod Nginx sert les deux
   // sous le même domaine et le CORS devient inutile.
@@ -32,3 +35,16 @@ export const env = {
 } as const
 
 export const isProduction = env.nodeEnv === 'production'
+
+/**
+ * À appeler depuis les services qui interrogent Gemini. Échoue avec un
+ * message explicite plutôt que d'envoyer une requête sans authentification.
+ */
+export function getGeminiApiKey(): string {
+  if (!env.geminiApiKey) {
+    throw new Error(
+      "GEMINI_API_KEY n'est pas définie : la brique IA est indisponible.",
+    )
+  }
+  return env.geminiApiKey
+}

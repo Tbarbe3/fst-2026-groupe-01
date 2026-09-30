@@ -19,6 +19,12 @@ export async function buildApp(): Promise<FastifyInstance> {
       : { transport: { target: 'pino-pretty', options: { colorize: true } } },
   })
 
+  if (!env.geminiApiKey) {
+    app.log.warn(
+      'GEMINI_API_KEY absente : les routes de la brique IA échoueront.',
+    )
+  }
+
   await app.register(helmet)
   await app.register(cors, { origin: env.corsOrigin, credentials: true })
 
