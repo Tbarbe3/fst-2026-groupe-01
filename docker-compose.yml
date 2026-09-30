@@ -1,0 +1,116 @@
+# Stack unique, pilotée par des profils Compose.
+#
+#   Développement  : docker compose --profile dev up -d
+#                    → Postgres + Adminer. Le front et l'API tournent en
+#                      natif (npm run dev) pour garder le hot reload.
+#
+#   Production     : docker compose --profile prod up -d --build
+#                    → Postgres + API + Nginx, publiés par Traefik.
+#
+# Dans les deux cas, les variables viennent du .env de la racine
+# (cf. .env.example). `:?` = variable obligatoire : Compose refuse de
+# démarrer si elle manque, plutôt que de retomber sur une valeur faible.
+services:
+  # Aucun profil : la base démarre dans les deux modes.
+  postgres:
+    image: postgres:17-alpine
+    container_name: codehow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?manquant dans .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?manquant dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:?manquant dans .env}
+    ports:
+      # 127.0.0.1 est ce qui rend cette ligne sûre : le port n'est joignable
+      # que depuis la machine hôte, jamais depuis le réseau. En prod on
+      # l'atteint via un tunnel SSH (cf. README).
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Volontairement absente du réseau `web` : la base n'a aucune raison
+    # d'être joignable par les autres projets du VPS, ni par Traefik.
+    networks:
+      - internal
+
+  # Interface web d'inspection de la base : http://localhost:8081
+  adminer:
+    image: adminer:5
+    container_name: codehow-adminer
+    restart: unless-stopped
+    profiles: [dev]
+    ports:
+      - '127.0.0.1:8081:8080'
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: ./backend
+    image: codehow-backend
+    container_name: codehow-api
+    restart: unless-stopped
+    profiles: [prod]
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Pas de garde `:?` ici : Compose interpole tout le fichier avant de
+      # filtrer les profils, une clé vide bloquerait aussi le profil dev.
+      # C'est `backend/src/config/env.ts` qui refuse de démarrer sans elle.
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      CORS_ORIGIN: https://${DOMAIN}
+    labels:
+      - "traefik.enable=true"
+      # Règle plus spécifique que celle du front : Traefik calcule la priorité
+      # d'après la longueur de la règle, /api gagne donc sur `/`. On la fixe
+      # explicitement pour que ça ne dépende pas de ce détail.
+      - "traefik.http.routers.codehow-api.rule=Host(`${DOMAIN:?manquant dans .env}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.codehow-api.priority=100"
+      - "traefik.http.routers.codehow-api.entrypoints=websecure"
+      - "traefik.http.routers.codehow-api.tls.certresolver=le"
+      - "traefik.http.services.codehow-api.loadbalancer.server.port=3000"
+    networks:
+      - web       # joignable par Traefik
+      - internal  # joint Postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    image: codehow-frontend
+    container_name: codehow-front
+    restart: unless-stopped
+    profiles: [prod]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.codehow.rule=Host(`${DOMAIN:?manquant dans .env}`)"
+      - "traefik.http.routers.codehow.entrypoints=websecure"
+      - "traefik.http.routers.codehow.tls.certresolver=le"
+      - "traefik.http.services.codehow.loadbalancer.server.port=80"
+    networks:
+      - web
+
+networks:
+  # Réseau du conteneur Traefik, créé hors de ce projet. Seuls les services
+  # du profil `prod` s'y rattachent.
+  web:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  postgres-data:

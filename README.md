@@ -166,17 +166,35 @@ User (1) ───────────< ReviewAttempt (N) >─────�
 ### Organisation du dépôt
 
     fst-2026-groupe-01/
-    ├── frontend/            # React + Vite + TS — port 5173
-    ├── backend/             # Fastify + TS — port 3000, routes préfixées /api
-    ├── docker-compose.yml   # PostgreSQL de développement
+    ├── frontend/                 # React + Vite + TS — port 5173
+    │   ├── Dockerfile            # build Vite → Nginx (image de prod)
+    │   └── nginx.conf            # fallback SPA + cache des assets
+    ├── backend/                  # Fastify + TS — port 3000, routes préfixées /api
+    │   └── Dockerfile            # build multi-étapes, exécution non-root
+    ├── docker-compose.yml        # stack unique, profils `dev` et `prod`
+    ├── .env.example
     └── README.md
 
 Les deux projets sont indépendants : chacun a son `package.json` et son `node_modules`, il n'y a pas de workspace racine. En développement, Vite relaie `/api` vers `http://localhost:3000`, ce qui évite au front de manipuler une URL absolue et supprime le CORS.
 
+Un seul `docker-compose.yml` sert les deux environnements, via les profils Compose :
+
+| Service | Profil | Rôle |
+|---|---|---|
+| `postgres` | *(toujours)* | La base, dans les deux modes |
+| `adminer` | `dev` | Interface web d'inspection |
+| `backend` | `prod` | API conteneurisée derrière Traefik |
+| `frontend` | `prod` | Bundle Vite servi par Nginx |
+
+En dev, on ne conteneurise volontairement pas le front et l'API : `npm run dev` garde le hot reload, qu'un rebuild d'image ferait perdre à chaque sauvegarde.
+
 ### Démarrage
 
-    # 1. Base de données
-    docker compose up -d
+    # 0. Une seule fois après le clone
+    cp .env.example .env
+
+    # 1. Base de données + Adminer
+    docker compose --profile dev up -d
 
     # 2. API (terminal 1)
     cd backend
@@ -188,6 +206,39 @@ Les deux projets sont indépendants : chacun a son `package.json` et son `node_m
     cd frontend
     npm install
     npm run dev
+
+### Inspecter la base
+
+En développement, trois accès au choix, tous équivalents :
+
+* **Adminer** — `http://localhost:8081`, démarré par le profil `dev`. Serveur `postgres`, utilisateur `codehow`, mot de passe `codehow`, base `codehow`.
+* **Client graphique** (DataGrip, DBeaver, outil Base de données de WebStorm) — hôte `localhost`, port `5432`, mêmes identifiants.
+* **psql dans le conteneur** — `docker exec -it codehow-db psql -U codehow -d codehow`.
+
+En production, la base n'est publiée que sur la loopback du VPS. On l'atteint depuis son poste par un tunnel SSH :
+
+    ssh -L 5433:localhost:5432 thomas@thomasbarbe-server
+
+Le tunnel ouvert, on connecte son client graphique sur `localhost:5433` avec les identifiants du `.env` du serveur. Le port 5433 côté poste évite d'entrer en conflit avec le Postgres de développement s'il tourne déjà.
+
+### Déploiement (VPS + Traefik)
+
+Traefik tourne déjà sur le serveur et expose le réseau Docker externe `web`. La stack s'y greffe sans publier de port accessible depuis Internet : Traefik seul écoute sur 80/443 et termine le TLS via le resolver Let's Encrypt `le`. Le seul port publié par le projet est celui de Postgres, lié à `127.0.0.1` et donc réservé au VPS lui-même.
+
+    # Sur le VPS, à la racine du dépôt cloné
+    cp .env.example .env    # renseigner DOMAIN, POSTGRES_PASSWORD, GEMINI_API_KEY
+    docker compose --profile prod up -d --build
+
+**Routage.** Un seul domaine, deux routeurs Traefik :
+
+| Route | Service | Conteneur |
+|---|---|---|
+| `Host(DOMAIN) && PathPrefix(/api)` | Fastify, port 3000 | `codehow-api` |
+| `Host(DOMAIN)` | Nginx, port 80 | `codehow-front` |
+
+Le routeur `/api` porte une `priority=100` pour passer devant celui du front. Le frontend appelle donc l'API en relatif (`fetch('/api/...')`) aussi bien en dev qu'en prod : aucune URL absolue dans le bundle, aucun CORS entre navigateur et API.
+
+**Cloisonnement réseau.** `postgres` n'est **pas** sur le réseau `web` : elle vit sur un réseau `internal` propre au projet, joignable uniquement par `backend`. Sans cela, tout conteneur d'un autre projet partageant `web` pourrait ouvrir une connexion sur le port 5432.
 
 ---
 
