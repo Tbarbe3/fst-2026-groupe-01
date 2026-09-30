@@ -1,113 +1,92 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
+interface User {
+  id: string
+  username: string
+  createdAt: string
+}
+
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'ready'; users: User[] }
+
 function App() {
-  const [count, setCount] = useState(0)
+  const [state, setState] = useState<LoadState>({ status: 'loading' })
+
+  useEffect(() => {
+    // Un AbortController évite de poser un état sur un composant démonté,
+    // cas courant avec le double montage du StrictMode en développement.
+    const controller = new AbortController()
+
+    // URL relative : le proxy Vite la relaie vers localhost:3000 en dev,
+    // Traefik vers le conteneur de l'API en prod. Rien à configurer.
+    fetch('/api/users', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`L'API a répondu ${response.status}`)
+        }
+        const body = (await response.json()) as { users: User[] }
+        setState({ status: 'ready', users: body.users })
+      })
+      .catch((error: unknown) => {
+        if (error instanceof Error && error.name === 'AbortError') return
+        setState({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Erreur inconnue',
+        })
+      })
+
+    return () => controller.abort()
+  }, [])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <section id="center">
+      <div>
+        <h1>Code How?</h1>
+        <p>
+          Test de la chaîne complète : ce tableau est lu dans la table{' '}
+          <code>users</code> de PostgreSQL, via <code>GET /api/users</code>.
+        </p>
+      </div>
 
-      <div className="ticks"></div>
+      {state.status === 'loading' && <p>Chargement des utilisateurs…</p>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {state.status === 'error' && (
+        <p role="alert">
+          Impossible de joindre l'API : {state.message}
+        </p>
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      {state.status === 'ready' &&
+        (state.users.length === 0 ? (
+          <p>La table <code>users</code> est vide.</p>
+        ) : (
+          <table>
+            <caption>{state.users.length} utilisateur(s)</caption>
+            <thead>
+              <tr>
+                <th scope="col">Nom d'utilisateur</th>
+                <th scope="col">Créé le</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.users.map((user) => (
+                <tr key={user.id}>
+                  <td>{user.username}</td>
+                  <td>
+                    {new Date(user.createdAt).toLocaleString('fr-FR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ))}
+    </section>
   )
 }
 

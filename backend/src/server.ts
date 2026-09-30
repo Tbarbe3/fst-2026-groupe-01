@@ -1,5 +1,6 @@
 import { buildApp } from './app.js'
 import { env } from './config/env.js'
+import { closePool } from './db/pool.js'
 
 const app = await buildApp()
 
@@ -9,6 +10,7 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {
     app.log.info(`${signal} reçu, arrêt du serveur`)
     await app.close()
+    await closePool()
     process.exit(0)
   })
 }

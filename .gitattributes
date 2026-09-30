@@ -1,0 +1,16 @@
+# Normalisation des fins de ligne. Sans cela, un poste Windows commite des
+# CRLF et les fichiers destinés à Linux cassent : un script shell en CRLF
+# échoue avec « bad interpreter: /usr/bin/env bash^M ».
+* text=auto eol=lf
+
+# Fichiers exécutés ou lus dans les conteneurs : LF obligatoire.
+*.sh         text eol=lf
+Dockerfile   text eol=lf
+*.conf       text eol=lf
+.env.example text eol=lf
+
+# Binaires : aucune conversion.
+*.png binary
+*.jpg binary
+*.svg text eol=lf
+*.ico binary
