@@ -1,0 +1,21 @@
+{
+  "name": "code-how",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Orchestration des tâches de développement. Ce package.json ne déclare aucune dépendance applicative et n'est PAS un workspace : frontend/ et backend/ gardent leur propre package.json et leur propre node_modules.",
+  "scripts": {
+    "dev": "concurrently -k -n tunnel,api,web -c magenta,cyan,green \"npm:dev:tunnel\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:tunnel": "ssh -N -L 5432:127.0.0.1:5432 dbtunnel@codehow.thomasbarbe.com",
+    "dev:api": "npm --prefix backend run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:local": "concurrently -k -n api,web -c cyan,green \"npm:dev:api\" \"npm:dev:web\"",
+    "db:up": "docker compose --profile dev up -d",
+    "db:down": "docker compose --profile dev down",
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build",
+    "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
