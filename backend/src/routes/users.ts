@@ -30,4 +30,13 @@ export const userRoutes: FastifyPluginAsync = async (app) => {
 
     return reply.send({ users })
   })
+
+  app.post('/check-user', async (request, reply) => {
+    const { id } = request.body as { id: string }
+    const result = await pool.query<{ id: string }>(
+      `SELECT id FROM "user" WHERE name = $1`,
+      [id]
+    )
+    return reply.send({ exists: (result.rowCount ?? 0) > 0 })
+  })
 }
