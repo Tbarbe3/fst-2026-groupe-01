@@ -7,7 +7,6 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc -b",
     "start": "node dist/server.js",
-    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
