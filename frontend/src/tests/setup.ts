@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 beforeEach(() => {
-  // Le thème est persisté dans localStorage : sans ce nettoyage, un test qui
+  // Le thème est persisté dans localStorage : sans ce nettoyage, un tests qui
   // bascule en clair fait échouer le suivant qui attend le thème par défaut.
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
