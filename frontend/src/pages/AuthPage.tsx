@@ -1,76 +1,81 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 
 import { authClient } from '../auth'
+import FeedbackMessage from '../components/FeedbackMessage'
+
+const MIN_PASSWORD_LENGTH = 8
 
 interface AuthPageProps {
   mode: 'login' | 'register'
 }
 
+interface LocationState {
+  from?: string
+}
+
 export default function AuthPage({ mode }: AuthPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
   const isLogin = mode === 'login'
 
-  const [id, setId] = useState('')
-  const [passcode, setPasscode] = useState('')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [passwordConfirm, setPasswordConfirm] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  const validate = (): string | null => {
+    if (!email.trim()) return "L'adresse e-mail est requise."
+    if (!isLogin && !name.trim()) return 'Le pseudonyme est requis.'
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+    }
+    if (!isLogin && password !== passwordConfirm) {
+      return 'Les deux mots de passe ne correspondent pas.'
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const invalid = validate()
+    if (invalid) {
+      setError(invalid)
+      return
+    }
+
     setError('')
-
-    if (!id.trim()) {
-      setError("L'identifiant est requis.")
-      return
-    }
-
-    if (passcode.length < 8) {
-      setError('Le mot de passe doit contenir au moins 8 caractères.')
-      return
-    }
-
     setIsLoading(true)
 
-    // Better Auth exige une adresse e-mail ; l'application n'en demande pas,
-    // on en dérive donc une depuis l'identifiant sur un domaine réservé.
-    const email = `${id.trim()}@codehow.local`
-
     try {
-      if (isLogin) {
-        const res = await fetch('/api/check-user', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: id.trim() }),
-        })
-        const data = (await res.json()) as { exists: boolean }
+      const { error: authError } = isLogin
+        ? await authClient.signIn.email({
+            email: email.trim(),
+            password,
+          })
+        : await authClient.signUp.email({
+            name: name.trim(),
+            email: email.trim(),
+            password,
+          })
 
-        if (!data.exists) {
-          setError("Aucun compte n'existe avec cet identifiant.")
-          return
-        }
-
-        const { error: signInError } = await authClient.signIn.email({
-          email,
-          password: passcode,
-        })
-        if (signInError) {
-          setError(signInError.message || 'Le mot de passe est incorrect.')
-          return
-        }
-      } else {
-        const { error: signUpError } = await authClient.signUp.email({
-          name: id.trim(),
-          email,
-          password: passcode,
-        })
-        if (signUpError) {
-          setError(signUpError.message || "Erreur lors de l'inscription.")
-          return
-        }
+      if (authError) {
+        // Message volontairement indifférencié à la connexion : distinguer
+        // « compte inconnu » de « mot de passe incorrect » révélerait quelles
+        // adresses sont inscrites.
+        setError(
+          isLogin
+            ? 'Adresse e-mail ou mot de passe incorrect.'
+            : authError.message || "L'inscription a échoué.",
+        )
+        return
       }
 
-      await navigate('/dashboard', { replace: true })
+      const from = (location.state as LocationState | null)?.from
+      await navigate(from ?? '/dashboard', { replace: true })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
     } finally {
@@ -90,57 +95,82 @@ export default function AuthPage({ mode }: AuthPageProps) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="name">Pseudonyme</label>
+              <input
+                type="text"
+                id="name"
+                className="form-control"
+                placeholder="Ex : thomas"
+                autoComplete="nickname"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isLoading}
+                maxLength={60}
+              />
+              <small className="form-hint">
+                Visible par les autres utilisateurs.
+              </small>
+            </div>
+          )}
+
           <div className="form-group">
-            <label htmlFor="id">Identifiant</label>
+            <label htmlFor="email">Adresse e-mail</label>
             <input
-              type="text"
-              id="id"
+              type="email"
+              id="email"
               className="form-control"
-              placeholder="Ex : thomas"
-              autoComplete="username"
-              value={id}
-              onChange={(e) => setId(e.target.value)}
+              placeholder="vous@exemple.fr"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
+              maxLength={254}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="passcode">Mot de passe</label>
+            <label htmlFor="password">Mot de passe</label>
             <input
               type="password"
-              id="passcode"
+              id="password"
               className="form-control"
               placeholder="••••••••"
               autoComplete={isLogin ? 'current-password' : 'new-password'}
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               disabled={isLoading}
-              minLength={8}
+              maxLength={128}
             />
+            {!isLogin && (
+              <small className="form-hint">
+                {MIN_PASSWORD_LENGTH} caractères minimum.
+              </small>
+            )}
           </div>
 
-          {error && (
-            <div className="error-message" role="alert">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              {error}
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="passwordConfirm">Confirmez le mot de passe</label>
+              <input
+                type="password"
+                id="passwordConfirm"
+                className="form-control"
+                placeholder="••••••••"
+                autoComplete="new-password"
+                value={passwordConfirm}
+                onChange={(e) => setPasswordConfirm(e.target.value)}
+                disabled={isLoading}
+                maxLength={128}
+              />
             </div>
           )}
+
+          <div className="form-feedback">
+            {error && <FeedbackMessage kind="error">{error}</FeedbackMessage>}
+          </div>
 
           <button type="submit" className="btn btn-primary" disabled={isLoading}>
             {isLoading
@@ -152,7 +182,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         </form>
 
         <div className="toggle-mode">
-          {isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?'}
+          <span>{isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?'}</span>
           <Link to={isLogin ? '/register' : '/login'}>
             {isLogin ? "S'inscrire" : 'Se connecter'}
           </Link>

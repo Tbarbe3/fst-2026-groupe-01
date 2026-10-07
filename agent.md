@@ -43,7 +43,43 @@ L'intégralité de ce qui est lu par un humain est rédigé en français :
 
 Les identifiants du code restent en anglais (`users`, `createdAt`, `pool`), conformément à la convention en place dans le dépôt et aux noms imposés par les bibliothèques. Seul ce qui s'affiche est traduit. *Si cette distinction ne correspond pas à l'intention, le préciser et cette règle sera corrigée.*
 
-### B. Commentaires : uniquement ce qui sert
+### B. Accessibilité et style
+
+Toute interface ajoutée ou modifiée respecte ces points. `npm run check:contrast` les vérifie pour la palette et doit passer.
+
+**Contraste.** Minimum WCAG AA : **4.5:1** pour le texte, **3:1** pour la bordure des champs de saisie et les indicateurs de focus. Aucune couleur n'est choisie à l'œil : on la valide avec le script. Plusieurs paires actuelles passent de justesse, un ajustement de teinte apparemment anodin peut faire basculer sous le seuil.
+
+**Deux thèmes.** Sombre **par défaut**, clair disponible via le sélecteur. Aucune couleur n'est écrite en dur dans un composant ni dans une règle CSS : on passe par les variables de `:root` / `[data-theme='light']`, sinon le thème clair se dégrade silencieusement.
+
+**Responsive.** Mobile d'abord, utilisable dès 320 px de large. Préférer `clamp()` et les unités relatives aux tailles fixes.
+
+**Daltonisme.** La couleur ne porte **jamais** seule une information : elle est toujours doublée d'une icône et d'un libellé — d'où le préfixe « Erreur : » / « Succès : » de `FeedbackMessage`. C'est le choix retenu plutôt qu'un mode daltonien séparé : un tel mode ne protège que ceux qui pensent à l'activer, alors qu'une interface qui ne dépend pas de la teinte fonctionne pour tout le monde sans réglage. Éviter en particulier d'opposer rouge et vert sans autre indice.
+
+**Pas de décalage de mise en page.** Un message conditionnel ne doit pas redimensionner son conteneur : on réserve sa place (`.form-feedback` et sa `min-height`). Sinon un bouton se déplace sous le curseur au moment du clic.
+
+**Focus visible.** Jamais d'`outline: none` sans remplacement : c'est la seule façon de naviguer au clavier.
+
+**Mouvement.** Respecter `prefers-reduced-motion` pour toute animation.
+
+### C. États transverses : centralisés, jamais répétés
+
+**L'attente de la session est déjà traitée, une seule fois, dans `Layout`.** Tant qu'elle n'est pas résolue, aucune route n'est montée. Une page ou une garde ne doit donc **jamais** lire `isPending` ni écrire « Chargement… » : la session y est toujours connue.
+
+Le rendu d'attente lui-même vit dans un seul composant, `LoadingScreen`. Pour un chargement local — une liste de challenges, un diff à récupérer — réutiliser ce composant plutôt que d'écrire un nouveau texte : `<LoadingScreen label="Chargement des challenges…" />`.
+
+Le principe vaut au-delà du chargement. Avant de dupliquer la gestion d'un état transverse, chercher s'il existe déjà un point unique et l'y placer :
+
+| État | Traité par |
+|---|---|
+| Attente de session | `Layout` |
+| Rendu d'attente | `LoadingScreen` |
+| Accès refusé / redirection | `ProtectedRoute`, `GuestRoute` |
+| Session incomplète | `ProtectedRoute` |
+| Messages d'erreur et de succès | `FeedbackMessage` |
+
+Un même texte d'interface présent dans deux fichiers est le signe qu'il manque un composant. Ces états touchent toutes les pages : dupliqués, ils divergent, et une correction d'accessibilité ou de libellé n'est appliquée qu'à moitié.
+
+### D. Commentaires : uniquement ce qui sert
 
 Le commentaire par défaut est l'absence de commentaire. On n'en écrit un que si un développeur qui découvre le fichier perdrait du temps sans lui.
 
@@ -73,17 +109,28 @@ En cas de doute : si le commentaire répète ce que le code dit, le supprimer ; 
 - Pas de Next.js, on utilise Vite car il n'y a pas besoin de SSR et l'API est découplée.
 - En développement local, Vite proxifie les appels de `/api` vers `http://localhost:3000`. Ne pas utiliser d'URL absolue côté client pour l'API.
 
-### 3. Backend
+### 3. Sécurité
+
+Priorité du projet, dont le sujet même est la relecture critique de code. Les règles suivantes ne se négocient pas.
+
+- **Requêtes SQL toujours paramétrées** : `pool.query('... WHERE name = $1', [value])`. Jamais de concaténation ni d'interpolation d'une valeur dans une chaîne SQL, même « sûre » en apparence.
+- **Aucune énumération de comptes.** Les messages d'authentification ne distinguent pas « compte inconnu » de « mot de passe incorrect » : un message unique, « Adresse e-mail ou mot de passe incorrect ». Ne jamais rouvrir d'endpoint public qui révèle l'existence d'un compte.
+- **Validation des entrées.** Un `request.body as T` est un mensonge au compilateur, pas une validation : déclarer un schéma Fastify sur toute route qui lit un corps de requête.
+- **Limitation de débit** sur les routes d'authentification (`@fastify/rate-limit`, 20 requêtes/minute/IP). Elle repose sur l'IP cliente, d'où l'importance de `trustProxy` en production pour lire `X-Forwarded-For` plutôt que l'adresse de Traefik.
+- **Jamais de secret ni de hachage de mot de passe dans une réponse d'API.** Sélectionner les colonnes explicitement, ne pas faire `SELECT *`.
+- Les secrets ne vivent que dans les `.env`, jamais dans le dépôt ni dans un message.
+
+### 4. Backend
 - Ne pas utiliser de paquets trop lourds, la stack privilégie la légèreté avec Fastify.
 - Les interactions avec Gemini doivent utiliser le *Structured Output* (JSON) strict.
 - En cas d'échec de l'IA, des fallbacks locaux doivent être prévus (seed de scénarios d'urgence, heuristiques sans IA pour le scoring).
 
-### 4. Docker
+### 5. Docker
 - Le `docker-compose.yml` utilise des profils.
 - Mode `dev` : Ne conteneurise pas le code source Node.js pour profiter du hot reload.
 - Mode `prod` : Construit les images avec le flag `--build` et `--profile prod`.
 
-### 5. Dépendances et vulnérabilités
+### 6. Dépendances et vulnérabilités
 
 Deux `overrides` npm sont en place et **ne doivent pas être supprimés** sans vérifier l'amont au préalable :
 
@@ -96,10 +143,24 @@ Dans les deux cas `npm audit fix` est impuissant : la dépendance est figée à 
 
 À chaque mise à jour de `monaco-editor` ou de `concurrently`, vérifier si l'épinglage a été relevé en amont ; si oui, retirer l'`override` correspondant.
 
-### 6. Tests
-- Aucun framework de test n'est configuré par défaut dans le dépôt initial.
-- Si des tests doivent être ajoutés, privilégier **Vitest** (standard avec Vite) pour le frontend comme pour le backend afin de mutualiser l'outillage.
-- Les tests (unitaires ou d'intégration) doivent être cloisonnés dans les dossiers `/frontend` et `/backend` respectifs.
+### 7. Tests
+
+**Vitest des deux côtés.** `npm test` à la racine exécute les deux suites. Elles doivent passer avant tout commit.
+
+**Toute fonctionnalité ajoutée vient avec son fichier de test.** Un fichier `X.test.ts(x)` à côté de `X.ts(x)`, pas dans un dossier `__tests__` séparé : le test se voit, se met à jour avec le code et sa disparition se remarque.
+
+Ce qu'un test doit couvrir, par ordre de priorité :
+
+1. **Le comportement attendu** dans le cas nominal.
+2. **Les garde-fous de sécurité**, en vérifiant ce qui ne doit *pas* arriver : qu'un message d'erreur ne révèle pas si un compte existe, qu'une requête au-delà du plafond reçoive un 429, qu'un démarrage en production sans secret échoue. Un garde-fou sans test est un garde-fou qu'on supprimera par accident.
+3. **Les exigences d'accessibilité** qui seraient autrement invisibles : rôle `alert` ou `status`, préfixe textuel doublant la couleur, `aria-hidden` sur les icônes décoratives.
+4. **Les bogues corrigés**, pour qu'ils ne reviennent pas — chaque test de ce type porte en commentaire le symptôme d'origine.
+
+**Pas de base de données ni de réseau dans les tests.** Un module testable ne doit pas exiger un PostgreSQL joignable : si un test ne peut pas importer une fonction sans ouvrir un pool, extraire cette fonction dans son propre module. C'est la raison d'être de `src/db/errors.ts` et `src/config/rate-limit.ts`. Côté frontend, `src/test/session.ts` fournit le double de `authClient`.
+
+**Les tests sortent du build.** `backend/tsconfig.json` les exclut, sans quoi ils finiraient dans l'image de production.
+
+**Pool `threads` et non `forks`** dans les deux `vitest.config.ts` : le pool par défaut expire sous Windows quand le chemin du projet contient une espace, ce qui est le cas ici (« Prog Web »).
 
 ## Hors Périmètre (À ne pas implémenter)
 - Chat multi-tours pour discuter avec l'IA.

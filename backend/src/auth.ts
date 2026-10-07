@@ -17,5 +17,12 @@ export const auth = betterAuth({
       ],
   emailAndPassword: {
     enabled: true,
+    minPasswordLength: 8,
+    // Un plafond évite qu'un mot de passe très long ne serve à saturer le
+    // hachage, coûteux par construction.
+    maxPasswordLength: 128,
+    // Aucun envoi de courrier n'est configuré : exiger la vérification
+    // enfermerait les comptes créés hors de l'application.
+    requireEmailVerification: false,
   },
 })
