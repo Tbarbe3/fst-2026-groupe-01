@@ -1,9 +1,3 @@
-/**
- * Lecture et validation des variables d'environnement au démarrage.
- * On échoue tout de suite si une clé obligatoire manque, plutôt que de
- * découvrir un `undefined` au milieu d'un appel à Gemini.
- */
-
 function required(name: string): string {
   const value = process.env[name]
   if (!value) {
@@ -23,28 +17,29 @@ export const env = {
 
   databaseUrl: required('DATABASE_URL'),
 
-  // Brique IA (cf. README : générateur de scénario + juge évaluateur).
-  // Volontairement pas `required()` : tant que la brique IA n'est pas
-  // écrite, une clé absente ne doit pas empêcher l'API de démarrer. La
-  // vérification se fait au point d'utilisation, via getGeminiApiKey().
-  geminiApiKey: process.env['GEMINI_API_KEY'] ?? '',
-
-  // Origine autorisée pour le front en dev ; en prod Nginx sert les deux
-  // sous le même domaine et le CORS devient inutile.
   corsOrigin: optional('CORS_ORIGIN', 'http://localhost:5173'),
+
+  // Origine telle que le navigateur la voit, et non celle du conteneur :
+  // Traefik termine le TLS, l'API ne peut donc pas la déduire de la requête.
+  betterAuthUrl: optional('BETTER_AUTH_URL', 'http://localhost:3000'),
+
+  betterAuthSecret: process.env['BETTER_AUTH_SECRET'] ?? '',
 } as const
 
 export const isProduction = env.nodeEnv === 'production'
 
-/**
- * À appeler depuis les services qui interrogent Gemini. Échoue avec un
- * message explicite plutôt que d'envoyer une requête sans authentification.
- */
-export function getGeminiApiKey(): string {
-  if (!env.geminiApiKey) {
-    throw new Error(
-      "GEMINI_API_KEY n'est pas définie : la brique IA est indisponible.",
-    )
-  }
-  return env.geminiApiKey
+// Ces deux contrôles ne valent qu'en production : une session signée avec le
+// secret par défaut de Better Auth est falsifiable, et une baseURL en HTTP
+// prive les cookies de l'attribut Secure. Mieux vaut refuser de démarrer.
+if (isProduction && !env.betterAuthSecret) {
+  throw new Error(
+    'BETTER_AUTH_SECRET est obligatoire en production : sans elle, les cookies de session sont signés avec une valeur par défaut et donc falsifiables.\n' +
+      '  Générer :  openssl rand -hex 32',
+  )
+}
+
+if (isProduction && env.betterAuthUrl.startsWith('http://')) {
+  throw new Error(
+    `BETTER_AUTH_URL vaut « ${env.betterAuthUrl} » en production : il faut l'URL HTTPS publique du site, sinon les cookies de session ne porteront pas l'attribut Secure.`,
+  )
 }

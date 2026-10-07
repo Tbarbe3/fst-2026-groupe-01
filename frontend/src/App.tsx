@@ -28,7 +28,6 @@ function App() {
 
     try {
       if (isLogin) {
-        // Vérification préalable de l'existence de l'utilisateur
         const res = await fetch('/api/check-user', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -82,11 +81,32 @@ function App() {
     return <div className="auth-container" style={{ textAlign: 'center' }}>Chargement...</div>
   }
 
+  // Une session sans utilisateur exploitable signale une réponse de
+  // /api/auth/get-session non conforme. Sans ce cas, l'accès à
+  // `session.user.name` lève et laisse un écran blanc, sans même un bouton
+  // pour se déconnecter : le cookie fautif rend alors l'app inutilisable.
+  if (session && !session.user) {
+    return (
+      <div className="auth-container">
+        <div className="auth-card dashboard">
+          <h2>Session invalide</h2>
+          <p>
+            Votre session est reconnue mais incomplète. Déconnectez-vous puis
+            reconnectez-vous.
+          </p>
+          <button className="btn btn-logout" onClick={handleLogout}>
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (session) {
     return (
       <div className="auth-container">
         <div className="auth-card dashboard">
-          <h2>Bienvenue, {session.user.name} !</h2>
+          <h2>Bienvenue, {session.user.name || session.user.email} !</h2>
           <p>Vous êtes connecté avec succès à l'application Code How.</p>
           <button className="btn btn-logout" onClick={handleLogout}>
             Se déconnecter

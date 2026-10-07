@@ -4,8 +4,8 @@ import { closePool } from './db/pool.js'
 
 const app = await buildApp()
 
-// Sans arrêt propre, `docker compose down` coupe les requêtes en cours et
-// laisse les connexions PostgreSQL ouvertes côté serveur.
+// Sans cet arrêt propre, `docker compose down` coupe les requêtes en cours
+// et laisse des connexions PostgreSQL ouvertes côté serveur.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, async () => {
     app.log.info(`${signal} reçu, arrêt du serveur`)
