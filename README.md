@@ -217,6 +217,8 @@ Un `npm run check` s'exécute au préalable et signale ce qui manque. C'est ce q
 | `npm run dev:api` / `dev:web` | Un service isolé |
 | `npm run db:up` / `db:down` | Base locale jetable (profil `dev`) |
 | `npm run check` | Vérifie que le poste est prêt (`.env`, dépendances) |
+| `npm run check:contrast` | Valide les contrastes WCAG de la palette |
+| `npm test` | Exécute les suites Vitest du backend et du frontend |
 | `npm run build` | Compile backend puis frontend |
 | `npm run typecheck` | Vérifie les types des deux projets |
 
@@ -231,8 +233,6 @@ L'équipe partage la base du serveur, il n'y a donc pas de conteneur Postgres à
 En attendant l'ORM, `backend/sql/*.sql` est appliqué dans l'ordre alphabétique **au démarrage de l'API**, dans une transaction par fichier. Aucune commande à lancer : un `docker compose --profile prod up -d --build` suffit à créer le schéma.
 
 Contrainte qui en découle : chaque fichier est rejoué à chaque boot, donc tout doit rester idempotent — `CREATE TABLE IF NOT EXISTS`, `ON CONFLICT DO NOTHING`. C'est suffisant pour poser un schéma, pas pour le faire évoluer : renommer une colonne demandera un vrai outil de migration.
-
-`001_init.sql` crée la table `users` et y insère trois comptes de démonstration, affichés par la page d'accueil pour vérifier la chaîne front → API → base. Leurs `password_hash` sont des chaînes factices qui ne correspondent à aucun mot de passe. À supprimer quand l'inscription réelle sera en place.
 
 ### Routage du frontend
 

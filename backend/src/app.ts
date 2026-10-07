@@ -1,5 +1,6 @@
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { fromNodeHeaders } from 'better-auth/node'
 
@@ -7,9 +8,9 @@ import { fromNodeHeaders } from 'better-auth/node'
 // compilation, `tsc` ne réécrit pas les chemins.
 import { auth } from './auth.js'
 import { env, isProduction } from './config/env.js'
+import { AUTH_RATE_LIMIT } from './config/rate-limit.js'
 import { runMigrations } from './db/migrate.js'
 import { healthRoutes } from './routes/health.js'
-import { userRoutes } from './routes/users.js'
 
 /**
  * Construit l'instance sans la démarrer : les tests peuvent ainsi la monter
@@ -29,15 +30,17 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(helmet)
   await app.register(cors, { origin: env.corsOrigin, credentials: true })
+  // Enregistré sans plafond global : seules les routes qui déclarent un
+  // `config.rateLimit` sont limitées.
+  await app.register(rateLimit, { global: false })
 
   // Avant d'ouvrir les routes : un schéma absent doit faire échouer le
   // démarrage, pas la première requête.
   await runMigrations(app.log)
 
   await app.register(healthRoutes, { prefix: '/api' })
-  await app.register(userRoutes, { prefix: '/api' })
 
-  app.all('/api/auth/*', async (request, reply) => {
+  app.all('/api/auth/*', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
     // Schéma déduit de X-Forwarded-Proto et non codé en dur : Better Auth
     // compare cette URL à sa baseURL et rejetterait une origine incohérente.
     const url = new URL(request.url, `${request.protocol}://${request.host}`)

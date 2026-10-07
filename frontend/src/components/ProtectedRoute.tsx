@@ -4,15 +4,7 @@ import { authClient } from '../auth'
 
 export default function ProtectedRoute() {
   const location = useLocation()
-  const { data: session, isPending } = authClient.useSession()
-
-  if (isPending) {
-    return (
-      <div className="auth-container" style={{ textAlign: 'center' }}>
-        Chargement…
-      </div>
-    )
-  }
+  const { data: session } = authClient.useSession()
 
   if (!session) {
     // `state` conserve la destination voulue, pour y revenir après connexion.

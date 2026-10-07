@@ -20,5 +20,8 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Les tests sont exécutés par Vitest, qui transpile à la volée : les
+  // compiler enverrait vitest et les fixtures dans l'image de production.
+  "exclude": ["src/**/*.test.ts", "src/test"]
 }

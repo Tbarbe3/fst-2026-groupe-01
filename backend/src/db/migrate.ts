@@ -5,17 +5,8 @@ import { fileURLToPath } from 'node:url'
 import type { FastifyBaseLogger } from 'fastify'
 
 import { isProduction } from '../config/env.js'
+import { describeDatabaseError } from './errors.js'
 import { pool } from './pool.js'
-
-// L'AggregateError que lève pg quand toutes les adresses résolues échouent a
-// un `message` vide : s'en tenir à `error.message` afficherait « () ».
-function describe(error: unknown): string {
-  if (!(error instanceof Error)) return String(error)
-
-  const code = (error as NodeJS.ErrnoException).code
-  if (error.message) return code ? `${code} — ${error.message}` : error.message
-  return code ?? error.name
-}
 
 async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   try {
@@ -24,8 +15,8 @@ async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   } catch (error) {
     log.error(
       isProduction
-        ? `Base injoignable (${describe(error)}). Vérifier que le service postgres est démarré et que DATABASE_URL pointe sur l'hôte « postgres ».`
-        : `Base injoignable (${describe(error)}).\n` +
+        ? `Base injoignable (${describeDatabaseError(error)}). Vérifier que le service postgres est démarré et que DATABASE_URL pointe sur l'hôte « postgres ».`
+        : `Base injoignable (${describeDatabaseError(error)}).\n` +
             "  L'équipe partage la base du VPS : ouvrir le tunnel dans un autre terminal,\n" +
             '  en remplaçant <vps> par un domaine qui pointe sur le serveur\n' +
             '  (celui du site, par exemple) :\n' +
