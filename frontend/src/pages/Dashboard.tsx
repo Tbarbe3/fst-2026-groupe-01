@@ -8,7 +8,11 @@ import {
   CheckCircle2, 
   Activity,
   Award,
-  BookOpen
+  BookOpen,
+  X,
+  Sun,
+  Moon,
+  Palette
 } from 'lucide-react'
 import { 
   AreaChart, 
@@ -21,6 +25,7 @@ import {
 } from 'recharts'
 
 import { authClient } from '../auth'
+import { applyTheme, readStoredTheme, type Theme } from '../theme'
 import './Dashboard.css'
 
 // -- Mock Data --
@@ -79,11 +84,100 @@ export default function Dashboard() {
   const { data: session } = authClient.useSession()
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTheme, setExpandedTheme] = useState<string | null>(MOCK_HISTORY[0].theme)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false)
+  const [currentTheme, setCurrentTheme] = useState<Theme>(readStoredTheme)
+
+  const [editingField, setEditingField] = useState<'name' | 'email' | 'password' | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPassCurrent, setEditPassCurrent] = useState('')
+  const [editPassNew, setEditPassNew] = useState('')
+  const [editPassConfirm, setEditPassConfirm] = useState('')
+  const [editError, setEditError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
   const themes = Array.from(new Set(MOCK_HISTORY.map(s => s.theme)))
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.stopPropagation()
     await authClient.signOut()
     await navigate('/login', { replace: true })
+  }
+
+  const handleThemeChange = (t: Theme) => {
+    applyTheme(t)
+    setCurrentTheme(t)
+    setIsThemeModalOpen(false)
+  }
+
+  const openEdit = (field: 'name' | 'email' | 'password') => {
+    setEditError('')
+    setEditName(session?.user?.name || '')
+    setEditEmail(session?.user?.email || '')
+    setEditPassCurrent('')
+    setEditPassNew('')
+    setEditPassConfirm('')
+    setEditingField(field)
+  }
+
+  const translateError = (message?: string) => {
+    if (!message) return 'Une erreur inattendue est survenue.'
+    const msg = message.toLowerCase()
+    if (msg.includes('invalid password') || msg.includes('incorrect')) return 'Le mot de passe actuel est incorrect.'
+    if (msg.includes('invalid email')) return "L'adresse e-mail est invalide."
+    if (msg.includes('already exists') || msg.includes('taken')) return 'Cette adresse e-mail est déjà utilisée.'
+    if (msg.includes('short')) return 'Le mot de passe est trop court (8 caractères minimum).'
+    return 'Une erreur est survenue : ' + message
+  }
+
+  const handleSaveName = async () => {
+    if (!editName.trim()) {
+      setEditError("Le pseudo ne peut pas être vide.")
+      return
+    }
+    setIsSaving(true)
+    setEditError('')
+
+    const { error } = await authClient.updateUser({ name: editName })
+    setIsSaving(false)
+    if (error) setEditError(translateError(error.message))
+    else setEditingField(null)
+  }
+
+  const handleSaveEmail = async () => {
+    if (!editEmail.trim()) {
+      setEditError("L'e-mail ne peut pas être vide.")
+      return
+    }
+    setIsSaving(true)
+    setEditError('')
+
+    const { error } = await authClient.changeEmail({ newEmail: editEmail })
+    setIsSaving(false)
+    if (error) setEditError(translateError(error.message))
+    else setEditingField(null)
+  }
+
+  const handleSavePassword = async () => {
+    if (!editPassCurrent || !editPassNew || !editPassConfirm) {
+      setEditError("Veuillez remplir tous les champs.")
+      return
+    }
+    if (editPassNew !== editPassConfirm) {
+      setEditError("Les nouveaux mots de passe ne correspondent pas.")
+      return
+    }
+    setIsSaving(true)
+    setEditError('')
+    const { error } = await authClient.changePassword({
+      newPassword: editPassNew,
+      currentPassword: editPassCurrent,
+      revokeOtherSessions: true
+    })
+    setIsSaving(false)
+    if (error) setEditError(translateError(error.message))
+    else setEditingField(null)
   }
 
   const displayName = session?.user?.name || session?.user?.email || 'Utilisateur'
@@ -109,7 +203,8 @@ export default function Dashboard() {
     : 0
 
   return (
-    <div className="dashboard-layout">
+    <>
+      <div className="dashboard-layout">
       
       {/* 1. Left Column: Scenarios List */}
       <div className="dashboard-panel">
@@ -231,6 +326,24 @@ export default function Dashboard() {
 
       {/* 3. Right Column: Progress & Profile */}
       <div className="dashboard-panel">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', background: 'var(--surface-sunken)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div 
+              onClick={() => setIsProfileModalOpen(true)} 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto', cursor: 'pointer' }}
+              title="Modifier le profil"
+            >
+              <div className="user-avatar">{initial}</div>
+              <span style={{ fontWeight: 600, fontSize: '0.95rem' }} className="hover-underline">{displayName}</span>
+            </div>
+            
+            <button className="btn-icon" onClick={() => setIsThemeModalOpen(true)} title="Changer le thème" style={{ padding: '0.5rem', background: 'rgba(128,128,128,0.1)', borderRadius: '8px' }}>
+              <Palette size={18} />
+            </button>
+            <button className="btn-icon" onClick={handleLogout} title="Se déconnecter" style={{ padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderRadius: '8px' }}>
+              <LogOut size={18} />
+            </button>
+        </div>
+
         <div className="panel-title">
           <Award className="panel-title-icon" size={20} />
           Progression
@@ -241,8 +354,8 @@ export default function Dashboard() {
             <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="var(--accent)" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="var(--chart-blue)" stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor="var(--chart-blue)" stopOpacity={0}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
@@ -252,7 +365,7 @@ export default function Dashboard() {
                 contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', borderColor: 'var(--border)', borderRadius: '8px' }}
                 itemStyle={{ color: '#fff' }}
               />
-              <Area type="monotone" dataKey="score" stroke="var(--accent)" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
+              <Area type="monotone" dataKey="score" stroke="var(--chart-blue)" strokeWidth={3} fillOpacity={1} fill="url(#colorScore)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -267,18 +380,135 @@ export default function Dashboard() {
             <div className="stat-label">Moyenne</div>
           </div>
         </div>
-
-        <div className="logout-container">
-          <div className="user-info">
-            <div className="user-avatar">{initial}</div>
-            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{displayName}</span>
-          </div>
-          <button className="btn-icon" onClick={handleLogout} title="Se déconnecter">
-            <LogOut size={18} />
-          </button>
-        </div>
       </div>
       
-    </div>
+      {/* Theme Modal */}
+      {isThemeModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsThemeModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '300px' }}>
+            <div className="modal-header">
+              <h3>Thème</h3>
+              <button className="btn-close" onClick={() => setIsThemeModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                onClick={() => handleThemeChange('light')}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                  padding: '1rem', borderRadius: '8px', border: currentTheme === 'light' ? '2px solid var(--accent)' : '2px solid var(--border)',
+                  background: 'rgba(255,255,255,0.05)', cursor: 'pointer', flex: 1
+                }}
+              >
+                <Sun size={24} />
+                <span>Clair</span>
+              </button>
+              <button 
+                onClick={() => handleThemeChange('dark')}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                  padding: '1rem', borderRadius: '8px', border: currentTheme === 'dark' ? '2px solid var(--accent)' : '2px solid var(--border)',
+                  background: 'rgba(255,255,255,0.05)', cursor: 'pointer', flex: 1
+                }}
+              >
+                <Moon size={24} />
+                <span>Sombre</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {isProfileModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsProfileModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Paramètres du Profil</h3>
+              <button className="btn-close" onClick={() => setIsProfileModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body">
+              {editError && <div style={{ color: '#ef4444', marginBottom: '1rem', fontSize: '0.85rem', padding: '0.5rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{editError}</div>}
+              
+              {/* Name */}
+              <div className="setting-row">
+                <div className="setting-info">
+                  <label>Pseudo</label>
+                  {editingField !== 'name' && <span>{displayName}</span>}
+                  {editingField === 'name' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input type="text" className="form-control" value={editName} onChange={e => setEditName(e.target.value)} autoFocus placeholder="Nouveau pseudo" disabled={isSaving} />
+                    </div>
+                  )}
+                </div>
+                {editingField === 'name' ? (
+                  <div className="setting-actions">
+                    <button className="btn-text" onClick={() => setEditingField(null)} disabled={isSaving}>Annuler</button>
+                    <button className="btn-primary-sm" onClick={handleSaveName} disabled={isSaving}>
+                      {isSaving ? 'En cours...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn-text" onClick={() => openEdit('name')}>Modifier</button>
+                )}
+              </div>
+
+              {/* Email */}
+              <div className="setting-row">
+                <div className="setting-info">
+                  <label>Email</label>
+                  {editingField !== 'email' && <span>{session?.user?.email}</span>}
+                  {editingField === 'email' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input type="email" className="form-control" value={editEmail} onChange={e => setEditEmail(e.target.value)} autoFocus placeholder="Nouvel email" disabled={isSaving} />
+                    </div>
+                  )}
+                </div>
+                {editingField === 'email' ? (
+                  <div className="setting-actions">
+                    <button className="btn-text" onClick={() => setEditingField(null)} disabled={isSaving}>Annuler</button>
+                    <button className="btn-primary-sm" onClick={handleSaveEmail} disabled={isSaving}>
+                      {isSaving ? 'En cours...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn-text" onClick={() => openEdit('email')}>Modifier</button>
+                )}
+              </div>
+
+              {/* Password */}
+              <div className="setting-row">
+                <div className="setting-info">
+                  <label>Mot de passe</label>
+                  {editingField !== 'password' && <span>••••••••</span>}
+                  {editingField === 'password' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input type="password" className="form-control" value={editPassCurrent} onChange={e => setEditPassCurrent(e.target.value)} placeholder="Mot de passe actuel" autoFocus disabled={isSaving} />
+                      <input type="password" className="form-control" value={editPassNew} onChange={e => setEditPassNew(e.target.value)} placeholder="Nouveau mot de passe" disabled={isSaving} />
+                      <input type="password" className="form-control" value={editPassConfirm} onChange={e => setEditPassConfirm(e.target.value)} placeholder="Confirmer le nouveau mot de passe" disabled={isSaving} />
+                    </div>
+                  )}
+                </div>
+                {editingField === 'password' ? (
+                  <div className="setting-actions">
+                    <button className="btn-text" onClick={() => setEditingField(null)} disabled={isSaving}>Annuler</button>
+                    <button className="btn-primary-sm" onClick={handleSavePassword} disabled={isSaving}>
+                      {isSaving ? 'En cours...' : 'Enregistrer'}
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn-text" onClick={() => openEdit('password')}>Modifier</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      </div>
+    </>
   )
 }

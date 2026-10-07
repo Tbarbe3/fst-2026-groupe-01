@@ -45,11 +45,4 @@ describe('Layout', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('expose le sélecteur de thème sur toutes les pages', () => {
-    sessionActive()
-    renderLayout()
-    expect(
-      screen.getByRole('button', { name: /Passer en thème/ }),
-    ).toBeInTheDocument()
-  })
 })
