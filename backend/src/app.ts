@@ -64,19 +64,17 @@ export async function buildApp(): Promise<FastifyInstance> {
     })
 
     const text = await response.text()
+    
+    // Si better-auth renvoie un corps vide, on s'assure que le navigateur 
+    // ne va pas essayer de le parser comme du JSON en retirant l'en-tête.
     if (!text) {
+      reply.removeHeader('content-type')
       return reply.send()
     }
 
-    const contentType = response.headers.get('content-type')
-    if (contentType && contentType.includes('application/json')) {
-      try {
-        return reply.send(JSON.parse(text))
-      } catch {
-        return reply.send(text)
-      }
-    }
-
+    // On renvoie le texte brut. Si c'est "null", Fastify enverra bien la chaîne "null" 
+    // qui sera parsée en `null` valide côté client.
+    // Cela évite que reply.send(null) ne génère un corps totalement vide.
     return reply.send(text)
   })
 

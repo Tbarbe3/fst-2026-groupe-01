@@ -67,7 +67,7 @@ function App() {
           )
         }
       }
-    } catch (err: unknown) {
+    } catch {
       setError('Une erreur réseau est survenue.')
     } finally {
       setIsLoading(false)
