@@ -18,6 +18,9 @@
     "build": "npm --prefix backend run build && npm --prefix frontend run build",
     "typecheck": "npm --prefix backend run typecheck && npm --prefix frontend run typecheck"
   },
+  "overrides": {
+    "shell-quote": "^1.11.0"
+  },
   "devDependencies": {
     "concurrently": "^9.1.2"
   }

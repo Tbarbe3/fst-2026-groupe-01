@@ -10,6 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "overrides": {
+    "dompurify": "^3.4.16"
+  },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
     "better-auth": "^1.7.7",

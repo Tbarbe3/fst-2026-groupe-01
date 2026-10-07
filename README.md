@@ -234,6 +234,23 @@ Contrainte qui en découle : chaque fichier est rejoué à chaque boot, donc tou
 
 `001_init.sql` crée la table `users` et y insère trois comptes de démonstration, affichés par la page d'accueil pour vérifier la chaîne front → API → base. Leurs `password_hash` sont des chaînes factices qui ne correspondent à aucun mot de passe. À supprimer quand l'inscription réelle sera en place.
 
+### Authentification (Better Auth)
+
+Les routes `/api/auth/*` sont servies par Better Auth, dont le schéma est créé par `002_auth.sql` (tables `user`, `session`, `account`, `verification` — distinctes de la table `users` de démonstration).
+
+Deux variables conditionnent son fonctionnement en production, et l'API **refuse de démarrer** si elles sont mal réglées :
+
+| Variable | Rôle |
+|---|---|
+| `BETTER_AUTH_SECRET` | Signature des sessions. Sans elle, Better Auth utilise une valeur par défaut et les cookies deviennent falsifiables. `openssl rand -hex 32` |
+| `BETTER_AUTH_URL` | Origine **telle que le navigateur la voit** : `https://<DOMAIN>` en prod |
+
+`BETTER_AUTH_URL` ne peut pas être déduite de la requête reçue. Traefik termine le TLS et transmet du HTTP clair au conteneur : l'API croirait être en HTTP et n'émettrait pas de cookies `Secure`. Pour la même raison, Fastify active `trustProxy` en production, afin de lire `X-Forwarded-Proto` au lieu du protocole de la connexion locale.
+
+Un point joué en votre faveur : le front et l'API partagent le même domaine, l'API étant sous `/api`. Les cookies de session sont donc same-site, sans `SameSite=None` ni configuration CORS particulière — c'est le cas simple. Un sous-domaine `api.` séparé aurait demandé bien plus de réglages.
+
+Changer `BETTER_AUTH_SECRET` invalide toutes les sessions en cours.
+
 ### Base partagée entre dev et prod
 
 L'équipe travaille sur **une seule base**, celle du VPS : un seul jeu de données de test à maintenir, et le nettoyage se fait depuis Adminer en ligne. Il n'y a donc pas de base locale dans le flux de travail habituel.
@@ -265,7 +282,7 @@ En production, `backend/.env` n'intervient pas : le conteneur reçoit ses variab
 
 En développement, `DATABASE_URL` pointe vers le tunnel SSH, donc son mot de passe est celui du `.env` **du serveur**. Si l'on bascule ponctuellement sur la base locale jetable (`--profile dev`), c'est le `POSTGRES_PASSWORD` du `.env` de la racine qu'il faut y mettre à la place.
 
-`GEMINI_API_KEY` peut rester vide des deux côtés tant que la brique IA n'est pas écrite : l'API démarre et log un avertissement, sans quoi un déploiement échouerait pour une fonctionnalité inexistante.
+Aucune variable liée à la brique IA n'est attendue pour l'instant : le fournisseur n'est pas arrêté, et la plomberie sera ajoutée au moment de l'implémenter.
 
 ### Inspecter la base
 
@@ -317,7 +334,7 @@ Pour `logs` en revanche il est inutile, nommer un service active son profil auto
 | `DOMAIN` | Le domaine du site, sans `https://` ni slash final |
 | `ADMINER_DOMAIN` | Le sous-domaine d'Adminer |
 | `ADMINER_BASIC_AUTH` | Sortie de `htpasswd -nbB <login> '<mot de passe>'`, **avec les `$` doublés** |
-| `GEMINI_API_KEY` | Peut rester vide pour l'instant |
+| `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Obligatoire : l'API refuse de démarrer sans elle |
 
 Deux pièges à ce niveau, tous deux silencieux :
 

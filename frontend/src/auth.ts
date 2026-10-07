@@ -1,6 +1,5 @@
-import { createAuthClient } from "better-auth/react"
+import { createAuthClient } from 'better-auth/react'
 
-export const authClient = createAuthClient({
-    // Laissons better-auth déduire l'URL de base depuis window.location
-    // Par défaut, il utilisera window.location.origin + '/api/auth'
-})
+// Sans baseURL, le client déduit window.location.origin + '/api/auth' :
+// la même configuration fonctionne derrière le proxy Vite et derrière Traefik.
+export const authClient = createAuthClient()
