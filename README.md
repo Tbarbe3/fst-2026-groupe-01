@@ -234,6 +234,23 @@ Contrainte qui en découle : chaque fichier est rejoué à chaque boot, donc tou
 
 `001_init.sql` crée la table `users` et y insère trois comptes de démonstration, affichés par la page d'accueil pour vérifier la chaîne front → API → base. Leurs `password_hash` sont des chaînes factices qui ne correspondent à aucun mot de passe. À supprimer quand l'inscription réelle sera en place.
 
+### Routage du frontend
+
+React Router (`createBrowserRouter`), configuré dans `frontend/src/router.tsx` :
+
+| Route | Page | Accès |
+|---|---|---|
+| `/` | Redirige vers `/dashboard` | — |
+| `/login`, `/register` | `AuthPage` | Visiteurs seulement |
+| `/dashboard` | `Dashboard` | Authentifié |
+| `/review/:challengeId` | `Review` | Authentifié |
+| `/review/:challengeId/result` | `ReviewResult` | Authentifié |
+| `*` | `NotFound` | — |
+
+Deux gardes encadrent ces routes. `ProtectedRoute` redirige un visiteur non connecté vers `/login` en conservant la destination voulue dans `location.state`, et traite le cas d'une session reconnue mais sans utilisateur. `GuestRoute` écarte de `/login` un visiteur déjà authentifié.
+
+Les liens profonds fonctionnent en production grâce au `try_files $uri $uri/ /index.html` de `frontend/nginx.conf` : sans lui, un rechargement sur `/dashboard` renverrait un 404 de Nginx. Les appels `/api` ne passent jamais par là, Traefik les route vers l'API avec une priorité supérieure.
+
 ### Authentification (Better Auth)
 
 Les routes `/api/auth/*` sont servies par Better Auth, dont le schéma est créé par `002_auth.sql` (tables `user`, `session`, `account`, `verification` — distinctes de la table `users` de démonstration).
