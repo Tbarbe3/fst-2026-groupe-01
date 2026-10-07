@@ -87,11 +87,11 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      # Pas de garde `:?` ici : Compose interpole tout le fichier avant de
-      # filtrer les profils, une clé vide bloquerait aussi le profil dev.
-      # C'est `backend/src/config/env.ts` qui refuse de démarrer sans elle.
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
       CORS_ORIGIN: https://${DOMAIN}
+      # Origine publique vue du navigateur : c'est elle qui détermine si
+      # Better Auth marque les cookies de session comme Secure.
+      BETTER_AUTH_URL: https://${DOMAIN}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
     labels:
       - "traefik.enable=true"
       # Comme adminer, ce conteneur est sur `web` et `internal` : il faut

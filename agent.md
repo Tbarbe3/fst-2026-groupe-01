@@ -29,6 +29,37 @@ Le projet **n'est pas un workspace npm classique**. Le dossier racine sert à or
 - `npm run check` : Vérifie la validité de l'environnement (`.env` existants et dépendances).
 - `npm run build` : Compile le backend et le frontend.
 
+## Règles impératives
+
+Ces deux règles s'appliquent sans exception, y compris aux modifications les plus mineures.
+
+### A. Tout en français
+
+L'intégralité de ce qui est lu par un humain est rédigé en français :
+
+- Textes de l'interface, libellés, boutons, titres, états de chargement.
+- **Messages d'erreur, sans exception** : exceptions levées, logs (`log.warn`, `log.error`), erreurs de validation, retours d'API, messages des scripts shell et Node, commentaires d'aide dans les `.env.example`.
+- Commentaires, docstrings, documentation, messages de commit.
+
+Les identifiants du code restent en anglais (`users`, `createdAt`, `pool`), conformément à la convention en place dans le dépôt et aux noms imposés par les bibliothèques. Seul ce qui s'affiche est traduit. *Si cette distinction ne correspond pas à l'intention, le préciser et cette règle sera corrigée.*
+
+### B. Commentaires : uniquement ce qui sert
+
+Le commentaire par défaut est l'absence de commentaire. On n'en écrit un que si un développeur qui découvre le fichier perdrait du temps sans lui.
+
+À écrire :
+- Le **pourquoi** d'un choix non évident, surtout s'il a l'air arbitraire ou inutilement compliqué.
+- Les contournements et leurs causes (comportement d'une bibliothèque, contrainte de plateforme, piège de configuration).
+- Les invariants qu'on ne peut pas déduire de la signature (« ce fichier est rejoué à chaque démarrage, donc tout doit être idempotent »).
+
+À ne pas écrire :
+- La paraphrase du code (`// incrémente le compteur` au-dessus de `count++`).
+- Les bannières décoratives et les séparateurs ASCII.
+- Un JSDoc dont la signature TypeScript dit déjà tout.
+- Les commentaires qui décrivent l'état du projet à un instant donné et deviendront faux (« pour l'instant », « en attendant »), sauf s'ils portent une consigne actionnable.
+
+En cas de doute : si le commentaire répète ce que le code dit, le supprimer ; s'il explique pourquoi le code est ainsi, le garder.
+
 ## Conventions de Développement et Règles
 
 ### 1. Environnement et Base de Données
@@ -52,7 +83,20 @@ Le projet **n'est pas un workspace npm classique**. Le dossier racine sert à or
 - Mode `dev` : Ne conteneurise pas le code source Node.js pour profiter du hot reload.
 - Mode `prod` : Construit les images avec le flag `--build` et `--profile prod`.
 
-### 5. Tests
+### 5. Dépendances et vulnérabilités
+
+Deux `overrides` npm sont en place et **ne doivent pas être supprimés** sans vérifier l'amont au préalable :
+
+| Projet | Override | Raison |
+|---|---|---|
+| `frontend` | `dompurify: ^3.4.16` | `monaco-editor@0.57.0`, qui est la dernière version, épingle `dompurify@3.4.15` exactement — une version visée par deux avis de XSS DOM |
+| racine | `shell-quote: ^1.11.0` | `concurrently` épingle `shell-quote@1.9.0`, vulnérable à une injection de commande (critique) |
+
+Dans les deux cas `npm audit fix` est impuissant : la dépendance est figée à une version exacte par le paquet parent, et aucune version plus récente de ce parent ne corrige le problème. L'`override` force la résolution vers la version corrigée, le saut étant mineur et compatible.
+
+À chaque mise à jour de `monaco-editor` ou de `concurrently`, vérifier si l'épinglage a été relevé en amont ; si oui, retirer l'`override` correspondant.
+
+### 6. Tests
 - Aucun framework de test n'est configuré par défaut dans le dépôt initial.
 - Si des tests doivent être ajoutés, privilégier **Vitest** (standard avec Vite) pour le frontend comme pour le backend afin de mutualiser l'outillage.
 - Les tests (unitaires ou d'intégration) doivent être cloisonnés dans les dossiers `/frontend` et `/backend` respectifs.

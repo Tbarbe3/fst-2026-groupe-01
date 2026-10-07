@@ -1,17 +1,23 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    tsconfigPaths: true, 
+    tsconfigPaths: true,
+  },
+  build: {
+    // Sans source maps, une erreur en prod ne donne qu'une pile minifiée
+    // (`at an (index-abc123.js:11:30814)`), indéchiffrable. Contrepartie :
+    // les fichiers .map sont servis publiquement, donc le code source du
+    // front est lisible — ce qui est déjà le cas du bundle lui-même.
+    sourcemap: true,
   },
   server: {
     port: 5173,
     open: true,
-    // En dev, /api est relayé vers le backend Fastify : le front n'a jamais
-    // besoin de connaître son URL absolue, et on évite le CORS.
+    // Relais vers Fastify : le front appelle /api en relatif, comme en prod
+    // derrière Traefik, ce qui évite toute URL absolue et tout CORS.
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3000',

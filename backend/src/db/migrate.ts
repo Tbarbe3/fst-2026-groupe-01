@@ -7,11 +7,8 @@ import type { FastifyBaseLogger } from 'fastify'
 import { isProduction } from '../config/env.js'
 import { pool } from './pool.js'
 
-/**
- * `AggregateError`, ce que lève pg quand toutes les adresses résolues
- * échouent, a un `message` vide : tout est dans `code` et dans `errors`.
- * S'en tenir à `error.message` afficherait « Base injoignable () ».
- */
+// L'AggregateError que lève pg quand toutes les adresses résolues échouent a
+// un `message` vide : s'en tenir à `error.message` afficherait « () ».
 function describe(error: unknown): string {
   if (!(error instanceof Error)) return String(error)
 
@@ -20,13 +17,6 @@ function describe(error: unknown): string {
   return code ?? error.name
 }
 
-/**
- * Teste la connexion avant toute migration.
- *
- * Sans ça, une base injoignable en développement produit un ECONNREFUSED
- * brut, l'API s'arrête, et le navigateur n'affiche qu'un 502 renvoyé par le
- * proxy Vite — symptôme très éloigné de la cause.
- */
 async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   try {
     const client = await pool.connect()
@@ -48,17 +38,15 @@ async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   }
 }
 
-// Depuis dist/db/, les fichiers SQL sont deux niveaux plus haut. Ils ne
-// sont pas compilés, le Dockerfile les copie tels quels à côté de dist/.
+// Deux niveaux au-dessus de dist/db/ : les .sql ne sont pas compilés, le
+// Dockerfile les copie tels quels à côté de dist/.
 const SQL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'sql')
 
 /**
- * Applique les fichiers de `sql/` dans l'ordre alphabétique, au démarrage.
- *
- * Solution provisoire en attendant l'ORM et ses migrations : chaque fichier
- * doit rester idempotent, il est rejoué à chaque boot. C'est suffisant pour
- * créer un schéma, pas pour le faire évoluer — une colonne renommée
- * demandera un vrai outil de migration.
+ * Applique les fichiers de `sql/` dans l'ordre alphabétique, à chaque
+ * démarrage : ils doivent donc tous rester idempotents. Suffisant pour poser
+ * un schéma, pas pour le faire évoluer — renommer une colonne demandera un
+ * véritable outil de migration.
  */
 export async function runMigrations(log: FastifyBaseLogger): Promise<void> {
   await assertDatabaseReachable(log)
@@ -72,8 +60,8 @@ export async function runMigrations(log: FastifyBaseLogger): Promise<void> {
 
   for (const file of files) {
     const sql = await readFile(join(SQL_DIR, file), 'utf8')
-    // Une transaction par fichier : un fichier à moitié appliqué laisserait
-    // un schéma dans un état qu'aucun rejeu ne rattraperait.
+    // Une transaction par fichier : à moitié appliqué, aucun rejeu ne
+    // rattraperait le schéma.
     const client = await pool.connect()
     try {
       await client.query('BEGIN')
