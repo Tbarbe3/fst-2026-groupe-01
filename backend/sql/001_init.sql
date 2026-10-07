@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Jeu de test pour vérifier la chaîne front → API → base de bout en bout.
+-- Jeu de tests pour vérifier la chaîne front → API → base de bout en bout.
 -- À supprimer quand l'inscription réelle sera en place.
 -- Les hash sont des valeurs factices : ces comptes ne permettent pas de se
 -- connecter, aucun mot de passe ne produit ces chaînes.
