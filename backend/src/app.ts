@@ -56,9 +56,28 @@ export async function buildApp(): Promise<FastifyInstance> {
     const response = await auth.handler(req)
 
     reply.status(response.status)
-    response.headers.forEach((value, key) => reply.header(key, value))
-    
-    return reply.send(response.body ? await response.text() : null)
+    response.headers.forEach((value, key) => {
+      // Ne pas copier le content-length car Fastify le recalculera
+      if (key.toLowerCase() !== 'content-length') {
+        reply.header(key, value)
+      }
+    })
+
+    const text = await response.text()
+    if (!text) {
+      return reply.send()
+    }
+
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        return reply.send(JSON.parse(text))
+      } catch {
+        return reply.send(text)
+      }
+    }
+
+    return reply.send(text)
   })
 
   return app

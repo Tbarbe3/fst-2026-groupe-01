@@ -42,25 +42,33 @@ function App() {
           return
         }
 
-        const { error } = await authClient.signIn.email({
+        const { error: signInError } = await authClient.signIn.email({
           email,
           password: passcode,
         })
-        if (error) {
-          setError(error.message || 'Le mot de passe est incorrect.')
+        if (signInError) {
+          setError(
+            signInError.message?.toLowerCase().includes('invalid')
+              ? 'Identifiant ou mot de passe incorrect.'
+              : 'Une erreur est survenue lors de la connexion.'
+          )
         }
       } else {
-        const { error } = await authClient.signUp.email({
+        const { error: signUpError } = await authClient.signUp.email({
           name: id.trim(),
           email,
           password: passcode,
         })
-        if (error) {
-          setError(error.message || 'Erreur lors de l\'inscription.')
+        if (signUpError) {
+          setError(
+            signUpError.message?.toLowerCase().includes('exists')
+              ? 'Cet identifiant est déjà utilisé.'
+              : 'Erreur lors de l\'inscription.'
+          )
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      setError('Une erreur réseau est survenue.')
     } finally {
       setIsLoading(false)
     }
@@ -120,7 +128,6 @@ function App() {
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               disabled={isLoading}
-              minLength={8}
             />
           </div>
 
