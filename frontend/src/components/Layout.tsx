@@ -2,7 +2,6 @@ import { Outlet } from 'react-router'
 
 import { authClient } from '../auth'
 import LoadingScreen from './LoadingScreen'
-import ThemeToggle from './ThemeToggle'
 
 /**
  * Point unique où l'attente de la session est traitée. Tant qu'elle n'est
@@ -14,7 +13,7 @@ export default function Layout() {
 
   return (
     <>
-      <ThemeToggle />
+
       {isPending ? <LoadingScreen /> : <Outlet />}
     </>
   )
