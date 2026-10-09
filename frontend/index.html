@@ -5,21 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Code How?</title>
-    <!--
-      Appliqué avant le premier rendu, et non depuis React : sinon le thème
-      sombre par défaut s'afficherait un instant avant de basculer en clair,
-      produisant un flash blanc à chaque chargement.
-    -->
-    <script>
-      try {
-        var t = localStorage.getItem('codehow-theme')
-        if (t === 'light' || t === 'dark') {
-          document.documentElement.dataset.theme = t
-        }
-      } catch (e) {
-        /* localStorage indisponible : le thème sombre par défaut s'applique. */
-      }
-    </script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>
