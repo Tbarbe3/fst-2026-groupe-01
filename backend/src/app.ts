@@ -10,6 +10,7 @@ import { auth } from './auth.js'
 import { env, isProduction } from './config/env.js'
 import { AUTH_RATE_LIMIT } from './config/rate-limit.js'
 import { runMigrations } from './db/migrate.js'
+import { createErrorHandler } from './error-handler.js'
 import { healthRoutes } from './routes/health.js'
 
 /**
@@ -21,12 +22,17 @@ export async function buildApp(): Promise<FastifyInstance> {
     logger: isProduction
       ? true
       : { transport: { target: 'pino-pretty', options: { colorize: true } } },
-    // Traefik transmet la requête en HTTP clair ; sans trustProxy, les
-    // en-têtes X-Forwarded-* sont ignorés et `request.protocol` vaut « http ».
-    // Faire confiance à tous les proxys est acceptable : seul Traefik peut
-    // joindre ce conteneur sur le réseau `web`.
+    // Sans trustProxy, X-Forwarded-* est ignoré et `request.protocol` vaut
+    // « http » derrière Traefik. Faire confiance à tous les proxys est sûr :
+    // seul Traefik joint ce conteneur.
     trustProxy: isProduction,
+    // 64 Kio suffisent largement à un formulaire d'authentification. La
+    // valeur par défaut de Fastify est 1 Mio, soit autant de mémoire qu'un
+    // client peut faire allouer par requête.
+    bodyLimit: 64 * 1024,
   })
+
+  app.setErrorHandler(createErrorHandler(isProduction))
 
   await app.register(helmet)
   await app.register(cors, { origin: env.corsOrigin, credentials: true })

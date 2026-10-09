@@ -4,13 +4,9 @@ import { describe, expect, it } from 'vitest'
 
 import { AUTH_RATE_LIMIT } from './config/rate-limit.js'
 
-/**
- * Reproduit le montage de `app.ts` sans la base de données : `buildApp`
- * applique les migrations au démarrage et exigerait un PostgreSQL joignable.
- *
- * Une limitation mal configurée n'échoue pas, elle laisse simplement tout
- * passer — d'où ce tests, qui vérifie que le plafond mord réellement.
- */
+// Reproduit `app.ts` sans la base, que `buildApp` exigerait. Une limitation
+// mal configurée n'échoue pas : elle laisse tout passer, d'où ce test qui
+// vérifie que le plafond mord réellement.
 async function buildTestApp() {
   const app = Fastify()
   await app.register(rateLimit, { global: false })

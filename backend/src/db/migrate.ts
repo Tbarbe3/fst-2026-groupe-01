@@ -34,10 +34,9 @@ async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
 const SQL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'sql')
 
 /**
- * Applique les fichiers de `sql/` dans l'ordre alphabétique, à chaque
- * démarrage : ils doivent donc tous rester idempotents. Suffisant pour poser
- * un schéma, pas pour le faire évoluer — renommer une colonne demandera un
- * véritable outil de migration.
+ * Applique `sql/` par ordre alphabétique à chaque démarrage : tout doit
+ * rester idempotent. Suffisant pour poser un schéma, pas pour le faire
+ * évoluer.
  */
 export async function runMigrations(log: FastifyBaseLogger): Promise<void> {
   await assertDatabaseReachable(log)

@@ -1,9 +1,7 @@
 /**
- * L'AggregateError que lève pg quand toutes les adresses résolues échouent a
- * un `message` vide : s'en tenir à `error.message` afficherait « () ».
- *
- * Module séparé de `migrate.ts` pour rester importable sans ouvrir de pool
- * ni exiger DATABASE_URL.
+ * L'AggregateError de pg a un `message` vide quand toutes les adresses
+ * échouent : `error.message` seul afficherait « () ». Module séparé pour
+ * rester importable sans ouvrir de pool.
  */
 export function describeDatabaseError(error: unknown): string {
   if (!(error instanceof Error)) return String(error)
