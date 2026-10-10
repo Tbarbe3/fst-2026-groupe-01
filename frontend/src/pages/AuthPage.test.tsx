@@ -100,7 +100,7 @@ describe('AuthPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('refuse deux mots de passe différents', async () => {
+    it('refuse un mot de passe qui ne respecte pas la politique', async () => {
       const user = userEvent.setup()
       renderAuth('register')
 
@@ -109,7 +109,24 @@ describe('AuthPage', () => {
       await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse')
       await user.type(
         screen.getByLabelText('Confirmez le mot de passe'),
-        'motdepasseX',
+        'motdepasse',
+      )
+      await user.click(screen.getByRole('button', { name: "S'inscrire" }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent('majuscule')
+      expect(authClientMock.signUp.email).not.toHaveBeenCalled()
+    })
+
+    it('refuse deux mots de passe différents', async () => {
+      const user = userEvent.setup()
+      renderAuth('register')
+
+      await user.type(screen.getByLabelText('Pseudonyme'), 'thomas')
+      await user.type(screen.getByLabelText('Adresse e-mail'), 'a@b.fr')
+      await user.type(screen.getByLabelText('Mot de passe'), 'Motdepasse1!')
+      await user.type(
+        screen.getByLabelText('Confirmez le mot de passe'),
+        'Motdepasse1!X',
       )
       await user.click(screen.getByRole('button', { name: "S'inscrire" }))
 
@@ -126,17 +143,17 @@ describe('AuthPage', () => {
 
       await user.type(screen.getByLabelText('Pseudonyme'), 'thomas')
       await user.type(screen.getByLabelText('Adresse e-mail'), 'a@b.fr')
-      await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse')
+      await user.type(screen.getByLabelText('Mot de passe'), 'Motdepasse1!')
       await user.type(
         screen.getByLabelText('Confirmez le mot de passe'),
-        'motdepasse',
+        'Motdepasse1!',
       )
       await user.click(screen.getByRole('button', { name: "S'inscrire" }))
 
       expect(authClientMock.signUp.email).toHaveBeenCalledWith({
         name: 'thomas',
         email: 'a@b.fr',
-        password: 'motdepasse',
+        password: 'Motdepasse1!',
       })
     })
   })
@@ -239,18 +256,20 @@ describe('AuthPage', () => {
     ) => {
       await user.type(screen.getByLabelText('Pseudonyme'), 'thomas')
       await user.type(screen.getByLabelText('Adresse e-mail'), 'a@b.fr')
-      await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse')
+      await user.type(screen.getByLabelText('Mot de passe'), 'Motdepasse1!')
       await user.type(
         screen.getByLabelText('Confirmez le mot de passe'),
-        'motdepasse',
+        'Motdepasse1!',
       )
       await user.click(screen.getByRole('button', { name: "S'inscrire" }))
     }
 
+    // Traduction par `code` et non par le texte anglais du `message` :
+    // stable même si la formulation de Better Auth change.
     it('signale explicitement un compte déjà existant', async () => {
       const user = userEvent.setup()
       authClientMock.signUp.email.mockResolvedValue({
-        error: { message: 'User already exists' },
+        error: { code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' },
       })
       renderAuth('register')
 
@@ -261,8 +280,25 @@ describe('AuthPage', () => {
       )
     })
 
-    // Un message inconnu ne doit pas remonter tel quel : il est en anglais et
-    // peut contenir des détails internes.
+    it('reprend tel quel le message français de la politique de mot de passe', async () => {
+      const user = userEvent.setup()
+      authClientMock.signUp.email.mockResolvedValue({
+        error: {
+          code: 'WEAK_PASSWORD',
+          message: 'Le mot de passe doit contenir au moins un symbole.',
+        },
+      })
+      renderAuth('register')
+
+      await submitRegister(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Le mot de passe doit contenir au moins un symbole.',
+      )
+    })
+
+    // Un code inconnu ne doit pas laisser passer le message brut : il peut
+    // être en anglais ou contenir des détails internes.
     it('ne laisse pas passer un message anglais inconnu', async () => {
       const user = userEvent.setup()
       authClientMock.signUp.email.mockResolvedValue({

@@ -3,8 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router'
 
 import { authClient } from '../auth'
 import FeedbackMessage from '../components/FeedbackMessage'
-
-const MIN_PASSWORD_LENGTH = 8
+import { describeNetworkError } from '../network-error'
+import {
+  describePasswordPolicy,
+  MIN_PASSWORD_LENGTH,
+  validatePassword,
+} from '../password-policy'
 
 interface AuthPageProps {
   mode: 'login' | 'register'
@@ -14,24 +18,33 @@ interface LocationState {
   from?: string
 }
 
-/**
- * Traduit les messages anglais de Better Auth. « Adresse déjà utilisée »
- * divulgue l'existence d'un compte : compromis assumé faute de
- * réinitialisation de mot de passe. Cf. BACKLOG.md, entrée 12.
- */
-function translateSignUpError(message?: string): string {
-  const lower = (message ?? '').toLowerCase()
+interface AuthError {
+  code?: string
+  message?: string
+}
 
-  if (lower.includes('already exists') || lower.includes('taken')) {
-    return 'Un compte existe déjà avec cette adresse e-mail.'
+/**
+ * Traduit par `code`, pas par le `message` anglais — stable si le texte
+ * change. « Adresse déjà utilisée » divulgue un compte : compromis assumé
+ * faute de réinitialisation de mot de passe. Cf. BACKLOG.md, entrée 12.
+ */
+function translateSignUpError(error: AuthError): string {
+  switch (error.code) {
+    case 'USER_ALREADY_EXISTS':
+    case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
+      return 'Un compte existe déjà avec cette adresse e-mail.'
+    case 'INVALID_EMAIL':
+      return "L'adresse e-mail n'est pas valide."
+    case 'PASSWORD_TOO_SHORT':
+      return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+    case 'PASSWORD_TOO_LONG':
+      return 'Le mot de passe est trop long.'
+    case 'WEAK_PASSWORD':
+      // Message déjà en français, produit par la politique du serveur.
+      return error.message || describePasswordPolicy()
+    default:
+      return "L'inscription a échoué. Vérifiez les informations saisies."
   }
-  if (lower.includes('invalid email')) {
-    return "L'adresse e-mail n'est pas valide."
-  }
-  if (lower.includes('short') || lower.includes('password')) {
-    return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
-  }
-  return "L'inscription a échoué. Vérifiez les informations saisies."
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
@@ -57,13 +70,23 @@ export default function AuthPage({ mode }: AuthPageProps) {
     setPasswordConfirm('')
   }
 
+  // La connexion n'applique que la longueur, pas la politique complète : un
+  // mot de passe créé avant son renforcement doit continuer à fonctionner.
+  // Le serveur applique la même règle (cf. password-policy.ts côté backend).
   const validate = (): string | null => {
     if (!email.trim()) return "L'adresse e-mail est requise."
     if (!isLogin && !name.trim()) return 'Le pseudonyme est requis.'
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+
+    if (isLogin) {
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+      }
+      return null
     }
-    if (!isLogin && password !== passwordConfirm) {
+
+    const passwordError = validatePassword(password)
+    if (passwordError) return passwordError
+    if (password !== passwordConfirm) {
       return 'Les deux mots de passe ne correspondent pas.'
     }
     return null
@@ -100,7 +123,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         setError(
           isLogin
             ? 'Adresse e-mail ou mot de passe incorrect.'
-            : translateSignUpError(authError.message),
+            : translateSignUpError(authError),
         )
         return
       }
@@ -108,7 +131,9 @@ export default function AuthPage({ mode }: AuthPageProps) {
       const from = (location.state as LocationState | null)?.from
       await navigate(from ?? '/dashboard', { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Une erreur est survenue.')
+      // Un message anglais brut (ex. « Failed to fetch ») ne doit jamais
+      // s'afficher : describeNetworkError le reconnaît, sinon repli générique.
+      setError(describeNetworkError(err) ?? 'Une erreur est survenue. Réessayez.')
     } finally {
       setIsLoading(false)
     }
@@ -146,9 +171,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         maxLength={128}
       />
       {!isLogin && (
-        <small className="form-hint">
-          {MIN_PASSWORD_LENGTH} caractères minimum.
-        </small>
+        <small className="form-hint">{describePasswordPolicy()}</small>
       )}
     </div>
   )

@@ -51,6 +51,9 @@ export async function buildApp(): Promise<FastifyInstance> {
     // compare cette URL à sa baseURL et rejetterait une origine incohérente.
     const url = new URL(request.url, `${request.protocol}://${request.host}`)
     const headers = fromNodeHeaders(request.headers)
+    // Le corps est reconstruit juste après : un Content-Length copié de la
+    // requête d'origine ne correspond plus à ce nouveau corps.
+    headers.delete('content-length')
 
     const req = new Request(url.toString(), {
       method: request.method,
