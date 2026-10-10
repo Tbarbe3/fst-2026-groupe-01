@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { validatePassword } from './password-policy'
+import { validatePassword } from '../password-policy.ts'
 
 describe('validatePassword', () => {
   it('accepte un mot de passe conforme', () => {

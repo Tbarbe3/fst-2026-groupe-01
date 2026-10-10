@@ -3,12 +3,12 @@ import { Link, useLocation, useNavigate } from 'react-router'
 
 import { authClient } from '../auth'
 import FeedbackMessage from '../components/FeedbackMessage'
-import { describeNetworkError } from '../network-error'
+import { describeNetworkError } from '../errors/network-error.ts'
 import {
   describePasswordPolicy,
   MIN_PASSWORD_LENGTH,
   validatePassword,
-} from '../password-policy'
+} from '../errors/password-policy.ts'
 
 interface AuthPageProps {
   mode: 'login' | 'register'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeNetworkError } from './network-error'
+import { describeNetworkError } from '../network-error.ts'
 
 describe('describeNetworkError', () => {
   // C'est l'erreur réelle que lève `fetch` quand l'API est injoignable :
