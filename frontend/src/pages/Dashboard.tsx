@@ -469,7 +469,7 @@ export default function Dashboard() {
                                                 </div>
                                             )}
                                         </div>
-                                        <div>
+                                        <div style={{ textAlign: 'center' }}>
                                             <label style={{ display: 'block', margin: 0 }}>Photo de profil</label>
                                             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>PNG ou JPG max 2 Mo</span>
                                         </div>
