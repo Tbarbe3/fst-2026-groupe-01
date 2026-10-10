@@ -4,14 +4,15 @@ import { fileURLToPath } from 'node:url'
 
 import type { FastifyBaseLogger } from 'fastify'
 
-import { isProduction } from '../config/env.js'
-import { describeDatabaseError } from './errors.js'
+import { env, isProduction } from '../config/env.js'
+import { describeDatabaseError, describeDatabaseTarget } from './errors.js'
 import { pool } from './pool.js'
 
 async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   try {
     const client = await pool.connect()
     client.release()
+    log.info({ target: describeDatabaseTarget(env.databaseUrl) }, 'Base atteinte')
   } catch (error) {
     log.error(
       isProduction

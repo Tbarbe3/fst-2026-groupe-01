@@ -3,9 +3,8 @@ interface LoadingScreenProps {
 }
 
 /**
- * Unique rendu d'attente de l'application. `role="status"` et `aria-live`
- * font annoncer le changement par les lecteurs d'écran, qui autrement ne
- * signalent rien pendant le chargement.
+ * Unique rendu d'attente. `role="status"` et `aria-live` le font annoncer
+ * par les lecteurs d'écran, muets sans eux pendant un chargement.
  */
 export default function LoadingScreen({
   label = 'Chargement…',

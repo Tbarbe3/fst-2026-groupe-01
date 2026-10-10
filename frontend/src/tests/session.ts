@@ -5,11 +5,9 @@ export interface FakeSession {
 }
 
 /**
- * Remplace `authClient` par un double. Les tests des gardes et des pages ont
- * besoin de piloter l'état de session sans serveur ni requête réseau.
- *
- * À appeler au niveau du module de tests, `vi.mock` étant hissé avant les
- * imports : un appel à l'intérieur d'un `it` serait sans effet.
+ * Double d'`authClient`, pour piloter l'état de session sans serveur. À
+ * déclarer au niveau du module : `vi.mock` est hissé avant les imports, un
+ * appel dans un `it` serait sans effet.
  */
 export const authClientMock = {
   useSession: vi.fn(),
