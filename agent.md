@@ -96,10 +96,17 @@ Le commentaire par défaut est l'absence de commentaire. On n'en écrit un que s
 
 En cas de doute : si le commentaire répète ce que le code dit, le supprimer ; s'il explique pourquoi le code est ainsi, le garder.
 
+**Longueur : 3 lignes maximum par bloc de commentaire** (`//` consécutives ou un seul `/** */`), en-tête de fichier compris. Un sujet qui déborde se scinde en plusieurs petits commentaires posés au plus près de ce qu'ils expliquent, plutôt qu'un seul pavé en tête de fichier — ou se déplace dans `README.md` / `BACKLOG.md` s'il documente une décision plutôt qu'un bout de code précis.
+
+### E. Vérification après chaque `git pull`
+
+Avant de continuer un travail après avoir récupéré des changements (`git pull`, changement de branche, reprise de session), vérifier que les fichiers touchés respectent les règles A à D : commentaires ≤ 3 lignes, pas d'anglais visible, contrastes (`npm run check:contrast` si une couleur a changé), pas d'état transverse duplié. Un diff qui a été écrit sans cette relecture — par un autre outil, un autre modèle, ou en dehors de cette discipline — est le moment le plus probable où une règle régresse silencieusement.
+
 ## Conventions de Développement et Règles
 
 ### 1. Environnement et Base de Données
-- L'équipe utilise une base de données **distante partagée** via un tunnel SSH (`dbtunnel`) sur `localhost:5432`. Toute action destructrice sur cette base affecte tous les développeurs.
+- L'équipe utilise une base de données **distante partagée** via un tunnel SSH (`dbtunnel`) sur `127.0.0.1:5432`. Toute action destructrice sur cette base affecte tous les développeurs.
+- Ce même `127.0.0.1:5432` est aussi celui de la base locale jetable (`npm run db:up`) : les deux sont indistinguables dans `DATABASE_URL`. Un compte créé sous l'une est invisible depuis l'autre. L'API log la cible (`describeDatabaseTarget`, sans identifiants) au démarrage — à vérifier en premier devant un échec de connexion inexpliqué.
 - Les fichiers SQL dans `backend/sql/` sont exécutés alphabétiquement au démarrage de l'API. Tout changement SQL doit être idempotent (`CREATE TABLE IF NOT EXISTS`, etc.). Il n'y a pas (encore) d'ORM.
 - **Variables d'environnement :**
   - `.env` racine (pour Docker Compose)
@@ -119,6 +126,8 @@ Priorité du projet, dont le sujet même est la relecture critique de code. Les 
 - **Limitation de débit** sur les routes d'authentification (`@fastify/rate-limit`, 20 requêtes/minute/IP). Elle repose sur l'IP cliente, d'où l'importance de `trustProxy` en production pour lire `X-Forwarded-For` plutôt que l'adresse de Traefik.
 - **Jamais de secret ni de hachage de mot de passe dans une réponse d'API.** Sélectionner les colonnes explicitement, ne pas faire `SELECT *`.
 - Les secrets ne vivent que dans les `.env`, jamais dans le dépôt ni dans un message.
+- **Politique de mot de passe** (longueur, majuscule, minuscule, chiffre, symbole) dupliquée dans `frontend/src/password-policy.ts` et `backend/src/password-policy.ts` : pas de workspace partagé entre les deux projets. Le serveur fait foi (hook `auth.ts`) ; le frontend n'offre qu'un retour immédiat. Garder les deux synchronisées. Appliquée à l'inscription et au changement de mot de passe, jamais à la connexion.
+- **Traduire les erreurs d'authentification par leur `code`**, jamais par le texte anglais du `message` (`translateSignUpError` dans `AuthPage.tsx`, `translateAccountError` dans `Dashboard.tsx`) : le texte change d'une version de Better Auth à l'autre, le code non.
 
 ### 4. Backend
 - Ne pas utiliser de paquets trop lourds, la stack privilégie la légèreté avec Fastify.

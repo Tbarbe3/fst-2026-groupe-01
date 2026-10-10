@@ -1,30 +1,33 @@
 #!/usr/bin/env node
 /**
- * Vérifie les contrastes des deux thèmes déclarés dans frontend/src/index.css.
- *
- * Plusieurs paires de la palette passent de justesse (4.62:1 pour un minimum
- * de 4.5), d'où ce contrôle automatisé : un ajustement de teinte qui paraît
- * anodin peut faire basculer une paire sous le seuil sans que cela se voie.
- *
- * Seuils WCAG 2.1 : 4.5:1 pour le texte courant (AA, 1.4.3), 3:1 pour les
- * limites des contrôles de saisie et les indicateurs de focus (AA, 1.4.11).
+ * Vérifie les contrastes des thèmes de frontend/src/index.css.
+ * Seuils WCAG AA : 4.5:1 pour le texte, 3:1 pour les bordures de contrôle
+ * et le focus. Certaines paires passent de justesse, d'où l'automatisation.
  */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const css = readFileSync(join(root, 'frontend/src/index.css'), 'utf8')
+// Fins de ligne normalisées : le dépôt est en LF mais la copie de travail
+// est en CRLF sous Windows, ce qui ferait échouer toute recherche multiligne.
+const css = readFileSync(join(root, 'frontend/src/index.css'), 'utf8').replace(
+  /\r\n/g,
+  '\n',
+)
 
-function readVars(selector) {
-  const start = css.indexOf(selector)
-  if (start === -1) {
-    throw new Error(`Sélecteur introuvable dans index.css : ${selector}`)
+// Recherche par expression rationnelle et non par chaîne exacte : le bloc
+// sombre est précédé de `:root,` et la mise en forme peut changer.
+function readVars(theme) {
+  const pattern = new RegExp(
+    `\\[data-theme=['"]${theme}['"]\\][^{]*\\{([^}]*)\\}`,
+  )
+  const match = css.match(pattern)
+  if (!match) {
+    throw new Error(`Thème introuvable dans index.css : ${theme}`)
   }
-  const open = css.indexOf('{', start)
-  const body = css.slice(open + 1, css.indexOf('}', open))
   const vars = {}
-  for (const [, name, value] of body.matchAll(/--([\w-]+):\s*([^;]+);/g)) {
+  for (const [, name, value] of match[1].matchAll(/--([\w-]+):\s*([^;]+);/g)) {
     vars[name] = value.trim()
   }
   return vars
@@ -50,8 +53,8 @@ const contrast = (a, b) => {
 }
 
 const themes = {
-  sombre: readVars(":root,\n[data-theme='dark']"),
-  clair: readVars("[data-theme='light']"),
+  sombre: readVars('dark'),
+  clair: readVars('light'),
 }
 
 const pairsFor = (v) => [
@@ -62,6 +65,7 @@ const pairsFor = (v) => [
   ['lien survolé', v['link-hover'], v.surface, 4.5],
   ['message d’erreur', v.danger, v.surface, 4.5],
   ['message de succès', v.success, v.surface, 4.5],
+  ['message d’avertissement', v.warning, v.surface, 4.5],
   ['texte du bouton', v['action-text'], v['action-bg'], 4.5],
   ['texte du bouton survolé', v['action-text'], v['action-bg-hover'], 4.5],
   ['bordure de champ', v['border-control'], v.surface, 3],

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { describeDatabaseError } from './errors.js'
+import { describeDatabaseError, describeDatabaseTarget } from './errors.js'
 
 describe('describeDatabaseError', () => {
   // Le cas qui motive cette fonction : pg lève un AggregateError au message
@@ -36,5 +36,28 @@ describe('describeDatabaseError', () => {
 
   it('accepte une valeur qui n’est pas une Error', () => {
     expect(describeDatabaseError('panne réseau')).toBe('panne réseau')
+  })
+})
+
+describe('describeDatabaseTarget', () => {
+  it('ne révèle ni utilisateur ni mot de passe', () => {
+    const target = describeDatabaseTarget(
+      'postgresql://codehow:secret@127.0.0.1:5432/codehow',
+    )
+    expect(target).toBe('127.0.0.1:5432/codehow')
+    expect(target).not.toContain('secret')
+    expect(target).not.toContain('codehow:')
+  })
+
+  it('retombe sur le port par défaut si absent', () => {
+    expect(describeDatabaseTarget('postgresql://x@exemple.fr/db')).toBe(
+      'exemple.fr:5432/db',
+    )
+  })
+
+  it("ne lève pas sur une URL mal formée", () => {
+    expect(describeDatabaseTarget('pas-une-url')).toBe(
+      'URL de connexion invalide',
+    )
   })
 })

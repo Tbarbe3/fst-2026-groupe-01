@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
 #
-# Crée sur le VPS un compte SSH dédié au tunnel vers PostgreSQL.
-#
-# Ce compte ne peut rien faire d'autre que forwarder le port 5432 :
-# pas de shell, pas de terminal, pas de forwarding vers une autre
-# destination. Il permet à un membre de l'équipe d'atteindre la base sans
-# lui donner d'accès au serveur.
-#
-# Usage, en root sur le VPS :
-#   sudo ./scripts/create-db-tunnel-user.sh "ssh-ed25519 AAAA... marie@portable"
-#
+# Crée un compte SSH qui ne peut que forwarder le port 5432 : accès à la base
+# sans accès au serveur. En root :
+#   sudo ./scripts/create-db-tunnel-user.sh "ssh-ed25519 AAAA... marie@poste"
 set -euo pipefail
 
 readonly USERNAME='dbtunnel'
@@ -49,15 +42,9 @@ readonly AUTH_KEYS="$SSH_DIR/authorized_keys"
 
 mkdir -p "$SSH_DIR"
 
-# Les options en préfixe sont la vraie protection :
-#   command="/bin/false"      aucune commande exécutable
-#   permitopen="..."          seules destinations autorisées pour un -L
-#   no-pty                    pas de terminal interactif
-#
-# Les deux permitopen sont nécessaires : sshd compare des chaînes littérales
-# sans résoudre les noms, donc `-L 5432:127.0.0.1:5432` est refusé si seul
-# `localhost:5432` est autorisé — et réciproquement. Le message est alors
-# « administratively prohibited », qui ne désigne pas sa cause.
+# Les options en préfixe sont la vraie protection. Les deux `permitopen`
+# sont nécessaires : sshd compare des chaînes littérales sans résoudre les
+# noms, et refuse sinon avec « administratively prohibited ».
 readonly RESTRICTIONS='command="/bin/false",no-agent-forwarding,no-X11-forwarding,no-pty,permitopen="localhost:5432",permitopen="127.0.0.1:5432"'
 readonly ENTRY="$RESTRICTIONS $PUBLIC_KEY"
 

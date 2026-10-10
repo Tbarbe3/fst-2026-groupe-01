@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 /**
- * Vérifie que le poste est prêt avant de lancer `npm run dev`.
- *
- * Sans ce garde-fou, un fichier .env manquant fait sortir l'API aussitôt,
- * concurrently arrête les autres services avec un SIGTERM, et le message
- * affiché ne désigne pas la cause : on voit « tunnel exited with SIGTERM »
- * alors que le problème est ailleurs.
+ * Vérifie que le poste est prêt avant `npm run dev`. Sans ce garde-fou, un
+ * .env manquant fait sortir l'API, concurrently tue le reste, et le message
+ * affiché — « tunnel exited with SIGTERM » — ne désigne pas la cause.
  */
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'

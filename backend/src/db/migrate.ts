@@ -4,14 +4,15 @@ import { fileURLToPath } from 'node:url'
 
 import type { FastifyBaseLogger } from 'fastify'
 
-import { isProduction } from '../config/env.js'
-import { describeDatabaseError } from './errors.js'
+import { env, isProduction } from '../config/env.js'
+import { describeDatabaseError, describeDatabaseTarget } from './errors.js'
 import { pool } from './pool.js'
 
 async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
   try {
     const client = await pool.connect()
     client.release()
+    log.info({ target: describeDatabaseTarget(env.databaseUrl) }, 'Base atteinte')
   } catch (error) {
     log.error(
       isProduction
@@ -34,10 +35,9 @@ async function assertDatabaseReachable(log: FastifyBaseLogger): Promise<void> {
 const SQL_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'sql')
 
 /**
- * Applique les fichiers de `sql/` dans l'ordre alphabétique, à chaque
- * démarrage : ils doivent donc tous rester idempotents. Suffisant pour poser
- * un schéma, pas pour le faire évoluer — renommer une colonne demandera un
- * véritable outil de migration.
+ * Applique `sql/` par ordre alphabétique à chaque démarrage : tout doit
+ * rester idempotent. Suffisant pour poser un schéma, pas pour le faire
+ * évoluer.
  */
 export async function runMigrations(log: FastifyBaseLogger): Promise<void> {
   await assertDatabaseReachable(log)

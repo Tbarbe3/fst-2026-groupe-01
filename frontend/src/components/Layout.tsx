@@ -4,9 +4,8 @@ import { authClient } from '../auth'
 import LoadingScreen from './LoadingScreen'
 
 /**
- * Point unique où l'attente de la session est traitée. Tant qu'elle n'est
- * pas résolue, aucune route n'est montée : les gardes et les pages peuvent
- * donc considérer la session comme connue et n'ont pas à gérer `isPending`.
+ * Point unique où l'attente de session est traitée : aucune route n'est
+ * montée avant résolution, donc les pages n'ont pas à gérer `isPending`.
  */
 export default function Layout() {
   const { isPending } = authClient.useSession()

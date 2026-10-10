@@ -4,11 +4,8 @@ const BASE = {
   DATABASE_URL: 'postgresql://codehow:secret@127.0.0.1:5432/codehow',
 }
 
-/**
- * `env.ts` lit process.env et lève au chargement du module : chaque cas doit
- * donc réimporter le module avec un environnement neuf, d'où `resetModules`
- * plutôt qu'un simple appel de fonction.
- */
+// `env.ts` lit process.env et lève au chargement : chaque cas réimporte
+// donc le module avec un environnement neuf, d'où `resetModules`.
 async function loadEnv(overrides: Record<string, string | undefined>) {
   vi.resetModules()
   for (const [key, value] of Object.entries({ ...BASE, ...overrides })) {
