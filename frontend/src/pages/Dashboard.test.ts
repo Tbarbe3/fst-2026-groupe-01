@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { translateAccountError } from './Dashboard'
 import { describePasswordPolicy } from '../password-policy'
+import {translateAccountError} from "@/dashboard-errors.ts";
 
 describe('translateAccountError', () => {
   it('traduit un mot de passe actuel incorrect', () => {
