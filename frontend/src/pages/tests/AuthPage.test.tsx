@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { authClientMock, sessionAbsent } from '@/tests/session'
-import AuthPage from './AuthPage'
+import { authClientMock, sessionAbsent } from '@/tests/session.ts'
+import AuthPage from '../AuthPage.tsx'
 
 vi.mock('../auth', () => ({ authClient: authClientMock }))
 

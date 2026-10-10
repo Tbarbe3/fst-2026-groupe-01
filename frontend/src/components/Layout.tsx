@@ -10,10 +10,5 @@ import LoadingScreen from './LoadingScreen'
 export default function Layout() {
   const { isPending } = authClient.useSession()
 
-  return (
-    <>
-
-      {isPending ? <LoadingScreen /> : <Outlet />}
-    </>
-  )
+  return isPending ? <LoadingScreen /> : <Outlet />
 }

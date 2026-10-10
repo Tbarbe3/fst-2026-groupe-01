@@ -6,31 +6,42 @@ export default function ProtectedRoute() {
   const location = useLocation()
   const { data: session } = authClient.useSession()
 
+  const handleForceLogout = async () => {
+    try {
+      await authClient.signOut()
+    } catch {
+      // Ignore si le backend rejette la requête
+    }
+
+    // Supprime le cookie de session Better Auth pour éviter la boucle
+    document.cookie = 'better-auth.session_token=; Max-Age=0; path=/;'
+    document.cookie = '__Secure-better-auth.session_token=; Max-Age=0; path=/;'
+
+    // Redirection directe pour purger l'état mémoire
+    window.location.href = '/login'
+  }
+
   if (!session) {
-    // `state` conserve la destination voulue, pour y revenir après connexion.
     return <Navigate to="/login" replace state={{ from: location.pathname }} />
   }
 
-  // Une session reconnue mais sans utilisateur signale une réponse de
-  // /api/auth/get-session non conforme. Sans ce cas, chaque page protégée
-  // lèverait sur `session.user`, laissant un écran blanc sans échappatoire.
   if (!session.user) {
     return (
-      <div className="auth-container">
-        <div className="auth-card dashboard">
-          <h2>Session invalide</h2>
-          <p>
-            Votre session est reconnue mais incomplète. Déconnectez-vous puis
-            reconnectez-vous.
-          </p>
-          <button
-            className="btn btn-logout"
-            onClick={() => void authClient.signOut()}
-          >
-            Se déconnecter
-          </button>
+        <div className="auth-container">
+          <div className="auth-card dashboard">
+            <h2>Session invalide</h2>
+            <p>
+              Votre session est reconnue mais incomplète. Déconnectez-vous puis
+              reconnectez-vous.
+            </p>
+            <button
+                className="btn btn-logout"
+                onClick={handleForceLogout}
+            >
+              Se déconnecter
+            </button>
+          </div>
         </div>
-      </div>
     )
   }
 
