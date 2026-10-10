@@ -32,6 +32,7 @@ import { describeNetworkError } from '../errors/network-error'
 import { describePasswordPolicy, validatePassword } from '../errors/password-policy'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 import { translateAccountError } from '../errors/dashboard-errors'
+import * as React from "react";
 
 // -- Mock Data --
 const MOCK_HISTORY = [

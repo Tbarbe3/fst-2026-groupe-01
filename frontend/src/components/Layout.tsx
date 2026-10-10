@@ -10,24 +10,5 @@ import LoadingScreen from './LoadingScreen'
 export default function Layout() {
   const { isPending } = authClient.useSession()
 
-  const handleForceLogout = async () => {
-    try {
-      await authClient.signOut()
-    } catch {
-      // Ignore les erreurs réseau si le backend rejette la requête
-    }
-
-    // Purgage du cookie de session pour couper la boucle
-    document.cookie = 'better-auth.session_token=; Max-Age=0; path=/;'
-
-    // Redirection brute pour réinitialiser complètement l'état de l'application
-    window.location.href = '/login'
-  }
-
-  return (
-    <>
-
-      {isPending ? <LoadingScreen /> : <Outlet />}
-    </>
-  )
+  return isPending ? <LoadingScreen /> : <Outlet />
 }
