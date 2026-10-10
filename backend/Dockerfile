@@ -29,8 +29,6 @@ ENV NODE_ENV=production
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node package.json ./
-# Les .sql ne sont pas compilés : runMigrations les lit à l'exécution.
-COPY --chown=node:node sql ./sql
 
 USER node
 EXPOSE 3000
