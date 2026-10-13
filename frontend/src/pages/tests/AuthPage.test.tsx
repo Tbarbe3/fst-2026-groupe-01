@@ -6,15 +6,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { authClientMock, sessionAbsent } from '@/tests/session.ts'
 import AuthPage from '../AuthPage.tsx'
 
-vi.mock('../auth', () => ({ authClient: authClientMock }))
+vi.mock('../../auth', () => ({ authClient: authClientMock }))
 
 function renderAuth(mode: 'login' | 'register') {
   const router = createMemoryRouter(
     [
-      { path: '/', element: <AuthPage mode={mode} /> },
+      { path: '/auth', element: <AuthPage mode={mode} /> },
+      { path: '/', element: <p>Page d'accueil</p> },
       { path: '/dashboard', element: <p>Tableau de bord</p> },
     ],
-    { initialEntries: ['/'] },
+    { initialEntries: ['/auth'] },
   )
   return render(<RouterProvider router={router} />)
 }
@@ -76,7 +77,13 @@ describe('AuthPage', () => {
       expect(alert).not.toHaveTextContent('User not found')
     })
 
-    it('redirige vers le tableau de bord après succès', async () => {
+    it('propose un lien pour revenir à l’accueil', () => {
+      renderAuth('login')
+      const backLink = screen.getByRole('link', { name: /Retour à l'accueil/i })
+      expect(backLink).toHaveAttribute('href', '/')
+    })
+
+    it('redirige vers la page d’accueil après succès', async () => {
       const user = userEvent.setup()
       authClientMock.signIn.email.mockResolvedValue({ error: null })
       renderAuth('login')
@@ -85,7 +92,7 @@ describe('AuthPage', () => {
       await user.type(screen.getByLabelText('Mot de passe'), 'motdepasse')
       await user.click(screen.getByRole('button', { name: 'Se connecter' }))
 
-      expect(await screen.findByText('Tableau de bord')).toBeInTheDocument()
+      expect(await screen.findByText("Page d'accueil")).toBeInTheDocument()
     })
   })
 

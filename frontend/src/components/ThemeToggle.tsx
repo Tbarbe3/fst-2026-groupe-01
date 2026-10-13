@@ -2,7 +2,11 @@ import { useState } from 'react'
 
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  className?: string
+}
+
+export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
   const [theme, setTheme] = useState<Theme>(readStoredTheme)
 
   const toggle = () => {
@@ -16,7 +20,7 @@ export default function ThemeToggle() {
   return (
     <button
       type="button"
-      className="theme-toggle"
+      className={`theme-toggle ${className}`.trim()}
       onClick={toggle}
       aria-label={
         goingToLight ? 'Passer en thème clair' : 'Passer en thème sombre'
