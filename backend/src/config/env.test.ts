@@ -27,6 +27,8 @@ describe('env', () => {
       'CORS_ORIGIN',
       'PORT',
       'HOST',
+      'AI_MODE',
+      'GEMINI_API_KEY',
     ]) {
       delete process.env[key]
     }
@@ -83,5 +85,23 @@ describe('env', () => {
     })
     expect(isProduction).toBe(true)
     expect(env.betterAuthUrl).toBe('https://codehow.exemple.fr')
+  })
+
+  it('passe en mode simulé sans clé Gemini', async () => {
+    const { env } = await loadEnv({})
+    expect(env.aiMode).toBe('mock')
+  })
+
+  it('passe en mode Gemini dès qu’une clé est fournie', async () => {
+    const { env } = await loadEnv({ GEMINI_API_KEY: 'cle' })
+    expect(env.aiMode).toBe('gemini')
+  })
+
+  it('refuse AI_MODE=gemini sans clé', async () => {
+    await expect(loadEnv({ AI_MODE: 'gemini' })).rejects.toThrow(/GEMINI_API_KEY/)
+  })
+
+  it('refuse une valeur inconnue de AI_MODE', async () => {
+    await expect(loadEnv({ AI_MODE: 'openai' })).rejects.toThrow(/AI_MODE/)
   })
 })

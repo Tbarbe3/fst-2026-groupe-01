@@ -299,7 +299,14 @@ En production, `backend/.env` n'intervient pas : le conteneur reçoit ses variab
 
 En développement, `DATABASE_URL` pointe vers le tunnel SSH, donc son mot de passe est celui du `.env` **du serveur**. Si l'on bascule ponctuellement sur la base locale jetable (`--profile dev`), c'est le `POSTGRES_PASSWORD` du `.env` de la racine qu'il faut y mettre à la place.
 
-Aucune variable liée à la brique IA n'est attendue pour l'instant : le fournisseur n'est pas arrêté, et la plomberie sera ajoutée au moment de l'implémenter.
+**Brique IA.** Sans `GEMINI_API_KEY`, l'API démarre en **mode simulé** (`AI_MODE=mock`) : scénarios tirés d'un catalogue écrit à la main (`backend/src/ai/mock-catalog.ts`), juge sans IA, latence imitée (`MOCK_LATENCY_MS`). Aucun jeton n'est consommé, ce qui permet de tester l'interface en conditions réelles. Avec une clé, Gemini est appelé ; `AI_MODE=mock` force le mode simulé malgré elle.
+
+L'IA n'intervient qu'à deux moments d'une partie :
+
+1. **Lancement du challenge**, et seulement si aucun scénario correspondant aux filtres et non encore joué n'existe en base. Le générateur produit un diff structuré, dont le serveur valide la cohérence et calcule les numéros de ligne. S'il échoue deux fois, on se replie sur le catalogue.
+2. **Soumission de la revue** : un appel au juge, ou aucun si la revue est vide. La détection est décidée par le serveur (même fichier, ±2 lignes), le juge ne note que la clarté des explications, et la note est calculée côté serveur. En cas d'échec, une heuristique par lignes prend le relais.
+
+Pendant la lecture du diff et la rédaction des commentaires, l'IA n'est jamais appelée.
 
 ### Inspecter la base
 

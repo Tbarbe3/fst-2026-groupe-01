@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { authClientMock, sessionAbsent, sessionActive } from '@/tests/session.ts'
+import SiteLayout from '@/components/SiteLayout.tsx'
 import Home from '../Home.tsx'
 
 vi.mock('../../auth', () => ({ authClient: authClientMock }))
@@ -11,7 +12,8 @@ vi.mock('../../auth', () => ({ authClient: authClientMock }))
 function renderHome() {
   const router = createMemoryRouter(
     [
-      { path: '/', element: <Home /> },
+      // Navigation et pied de page vivent dans SiteLayout, plus dans Home.
+      { element: <SiteLayout />, children: [{ path: '/', element: <Home /> }] },
       { path: '/login', element: <p>Page Connexion</p> },
       { path: '/register', element: <p>Page Inscription</p> },
       { path: '/dashboard', element: <p>Page Dashboard</p> },

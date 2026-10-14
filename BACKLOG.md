@@ -28,7 +28,7 @@ sauvegarder avant :**
     docker exec codehow-db pg_dump -U codehow -d codehow > sauvegarde.sql
     docker exec -i codehow-db psql -U codehow -d codehow       < scripts/sql/001-repointer-vers-user.sql
 
-### 2. Trois tables ne sont déclarées nulle part — **bloquant**
+### 2. ~~Trois tables ne sont déclarées nulle part~~ — fait : `backend/sql/003_domain.sql`
 
 `scenarios`, `review_attempts` et `user_comments` existent en base mais
 **aucun fichier de `backend/sql/` ne les crée**. Elles ont été ajoutées à la
@@ -127,19 +127,19 @@ une notification à l'adresse concernée, dès que l'envoi d'e-mails existera
 Le pseudonyme n'a pas de contrainte d'unicité dans le schéma de Better Auth :
 deux comptes peuvent porter le même. À décider si c'est acceptable.
 
-### 13. Écrans de revue de code
+### 13. ~~Écrans de revue de code~~ — fait (diff, commentaires en ligne, débriefing)
 
 `/review/:challengeId` et `/review/:challengeId/result` sont des pages
 d'attente. Le diff viewer (Monaco est installé), les commentaires en ligne
 et le débriefing restent à écrire.
 
-### 14. Brique IA sans fournisseur
+### 14. ~~Brique IA sans fournisseur~~ — fait : Gemini + mode simulé, voir README
 
 La plomberie Gemini a été retirée. Le choix du fournisseur et
 l'implémentation des deux briques décrites dans le README — générateur de
 scénario, juge évaluateur — restent à faire.
 
-### 15. Données du tableau de bord simulées
+### 15. ~~Données du tableau de bord simulées~~ — fait : `GET /api/me/attempts`
 
 `MOCK_HISTORY` dans `Dashboard.tsx`. À remplacer par les vraies tentatives
 une fois `review_attempts` alimentée.
