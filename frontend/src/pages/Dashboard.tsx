@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import {
     LogOut,
     Code2,
@@ -14,7 +14,9 @@ import {
     Moon,
     Settings,
     Camera,
-    Trash2
+    Trash2,
+    Home,
+    ArrowLeft
 } from 'lucide-react'
 import {
     AreaChart,
@@ -259,6 +261,13 @@ export default function Dashboard() {
             <div className="dashboard-layout">
                 {/* 1. Colonne gauche : Historique */}
                 <div className="dashboard-panel">
+                    <div className="panel-top-bar">
+                        <Link to="/" className="btn-return-home" title="Retour à l'accueil" aria-label="Retour à l'accueil">
+                            <ArrowLeft size={16} />
+                            <span>Accueil</span>
+                        </Link>
+                    </div>
+
                     <div className="panel-title">
                         <BookOpen className="panel-title-icon" size={20} />
                         Historique
@@ -375,6 +384,14 @@ export default function Dashboard() {
                             <span className="profile-name">{displayName}</span>
                         </div>
 
+                        <Link
+                            to="/"
+                            className="btn-icon"
+                            title="Retour à l'accueil"
+                            aria-label="Retour à l'accueil"
+                        >
+                            <Home size={18} />
+                        </Link>
                         <button
                             className="btn-icon"
                             onClick={() => setIsProfileModalOpen(true)}

@@ -1,10 +1,11 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter } from 'react-router'
 
 import GuestRoute from './components/GuestRoute'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import AuthPage from './pages/AuthPage'
 import Dashboard from './pages/Dashboard'
+import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 import Review from './pages/Review'
 import ReviewResult from './pages/ReviewResult'
@@ -13,7 +14,7 @@ export const router = createBrowserRouter([
   {
     element: <Layout />,
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <Home /> },
       {
         element: <GuestRoute />,
         children: [

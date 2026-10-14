@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
+import { ArrowLeft } from 'lucide-react'
 
 import { authClient } from '../auth'
 import FeedbackMessage from '../components/FeedbackMessage'
@@ -129,7 +130,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
       }
 
       const from = (location.state as LocationState | null)?.from
-      await navigate(from ?? '/dashboard', { replace: true })
+      await navigate(from && from !== '/dashboard' ? from : '/', { replace: true })
     } catch (err: unknown) {
       // Un message anglais brut (ex. « Failed to fetch ») ne doit jamais
       // s'afficher : describeNetworkError le reconnaît, sinon repli générique.
@@ -179,8 +180,19 @@ export default function AuthPage({ mode }: AuthPageProps) {
   return (
     <div className={`auth-container${isLogin ? '' : ' auth-container-wide'}`}>
       <div className="auth-card">
+        <div className="auth-top-nav">
+          <Link to="/" className="btn-back-home" aria-label="Retour à l'accueil">
+            <ArrowLeft size={16} />
+            <span>Retour à l'accueil</span>
+          </Link>
+        </div>
+
         <div className="auth-header">
-          <h1>Code How?</h1>
+          <h1>
+            <Link to="/" className="auth-brand-link" title="Retour à l'accueil">
+              Code How?
+            </Link>
+          </h1>
           <p>
             {isLogin
               ? 'Connectez-vous à votre compte'
