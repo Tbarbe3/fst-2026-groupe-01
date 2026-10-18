@@ -363,15 +363,17 @@ export default function Home() {
           <div className="landing-actions">
             <ThemeToggle className="theme-toggle-inline" />
 
-            {/* Bouton d'accès au dashboard toujours accessible */}
-            <Link
-              to="/dashboard"
-              className="btn-dashboard-nav"
-              title="Accéder au tableau de bord"
-            >
-              <LayoutDashboard size={16} />
-              <span>Dashboard</span>
-            </Link>
+            {/* Bouton d'accès au tableau de bord — visible uniquement si connecté */}
+            {isAuthenticated && (
+              <Link
+                to="/dashboard"
+                className="btn-dashboard-nav"
+                title="Accéder au tableau de bord"
+              >
+                <LayoutDashboard size={16} />
+                <span>Tableau de bord</span>
+              </Link>
+            )}
 
             {isAuthenticated ? (
               <div className="user-nav-group">
@@ -467,10 +469,6 @@ export default function Home() {
                   <Link to="/login" className="hero-btn-secondary">
                     <LogIn size={18} />
                     <span>Se connecter</span>
-                  </Link>
-                  <Link to="/dashboard" className="hero-btn-outline">
-                    <LayoutDashboard size={18} />
-                    <span>Accéder au Dashboard</span>
                   </Link>
                 </>
               )}
@@ -941,10 +939,6 @@ export default function Home() {
                     <LogIn size={18} />
                     <span>Se connecter</span>
                   </Link>
-                  <Link to="/dashboard" className="hero-btn-outline">
-                    <LayoutDashboard size={18} />
-                    <span>Accéder au Dashboard</span>
-                  </Link>
                 </>
               )}
             </div>
@@ -1011,9 +1005,6 @@ export default function Home() {
                   </li>
                   <li>
                     <Link to="/register">S'inscrire</Link>
-                  </li>
-                  <li>
-                    <Link to="/dashboard">Dashboard (connexion requise)</Link>
                   </li>
                 </>
               )}
