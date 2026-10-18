@@ -5,11 +5,13 @@ import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import SiteLayout from './components/SiteLayout'
 import AuthPage from './pages/AuthPage'
-import Dashboard from './pages/Dashboard'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
-import Review from './pages/Review'
-import ReviewResult from './pages/ReviewResult'
+
+// Pages lourdes (recharts, Monaco) chargées à la demande pour alléger le bundle initial.
+const lazyPage = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({
+  Component: (await load()).default,
+})
 
 export const router = createBrowserRouter([
   {
@@ -29,9 +31,12 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute />,
             children: [
-              { path: 'dashboard', element: <Dashboard /> },
-              { path: 'review/:challengeId', element: <Review /> },
-              { path: 'review/:challengeId/result', element: <ReviewResult /> },
+              { path: 'dashboard', lazy: lazyPage(() => import('./pages/Dashboard')) },
+              { path: 'review/:challengeId', lazy: lazyPage(() => import('./pages/Review')) },
+              {
+                path: 'review/:challengeId/result',
+                lazy: lazyPage(() => import('./pages/ReviewResult')),
+              },
             ],
           },
           { path: '*', element: <NotFound /> },
