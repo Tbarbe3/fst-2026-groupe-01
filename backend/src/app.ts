@@ -6,11 +6,15 @@ import { fromNodeHeaders } from 'better-auth/node'
 
 // Extension .js aux imports locaux : c'est ce que Node résout après
 // compilation, `tsc` ne réécrit pas les chemins.
+import { createGeminiProvider, createMockProvider } from './ai/provider.js'
 import { auth } from './auth.js'
 import { env, isProduction } from './config/env.js'
 import { AUTH_RATE_LIMIT } from './config/rate-limit.js'
+import { createChallengesRepo } from './db/challenges-repo.js'
 import { runMigrations } from './db/migrate.js'
+import { pool } from './db/pool.js'
 import { createErrorHandler } from './error-handler.js'
+import { challengesRoutes } from './routes/challenges.js'
 import { healthRoutes } from './routes/health.js'
 
 /**
@@ -45,6 +49,26 @@ export async function buildApp(): Promise<FastifyInstance> {
   await runMigrations(app.log)
 
   await app.register(healthRoutes, { prefix: '/api' })
+
+  const ai =
+    env.aiMode === 'gemini'
+      ? createGeminiProvider({
+          apiKey: env.geminiApiKey,
+          generatorModel: env.geminiGeneratorModel,
+          judgeModel: env.geminiJudgeModel,
+        })
+      : createMockProvider(env.mockLatencyMs)
+  app.log.info({ mode: ai.name }, 'Brique IA')
+
+  await app.register(challengesRoutes, {
+    prefix: '/api',
+    repo: createChallengesRepo(pool),
+    ai,
+    getUserId: async (request) => {
+      const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) })
+      return session?.user.id ?? null
+    },
+  })
 
   app.all('/api/auth/*', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
     // Schéma déduit de X-Forwarded-Proto et non codé en dur : Better Auth

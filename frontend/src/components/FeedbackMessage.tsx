@@ -1,5 +1,5 @@
 interface FeedbackMessageProps {
-  kind: 'error' | 'success'
+  kind: 'error' | 'success' | 'info'
   children: React.ReactNode
 }
 
@@ -12,10 +12,11 @@ export default function FeedbackMessage({
   children,
 }: FeedbackMessageProps) {
   const isError = kind === 'error'
+  const prefix = { error: 'Erreur', success: 'Succès', info: 'Information' }[kind]
 
   return (
     <p
-      className={`feedback-message ${isError ? 'feedback-error' : 'feedback-success'}`}
+      className={`feedback-message feedback-${kind}`}
       role={isError ? 'alert' : 'status'}
     >
       <svg
@@ -31,17 +32,22 @@ export default function FeedbackMessage({
         aria-hidden="true"
       >
         <circle cx="12" cy="12" r="10" />
-        {isError ? (
+        {kind === 'success' ? (
+          <polyline points="8 12.5 11 15.5 16 9" />
+        ) : kind === 'info' ? (
+          <>
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </>
+        ) : (
           <>
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </>
-        ) : (
-          <polyline points="8 12.5 11 15.5 16 9" />
         )}
       </svg>
       <span>
-        <strong>{isError ? 'Erreur' : 'Succès'} : </strong>
+        <strong>{prefix} : </strong>
         {children}
       </span>
     </p>

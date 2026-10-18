@@ -24,7 +24,24 @@ export const env = {
   betterAuthUrl: optional('BETTER_AUTH_URL', 'http://localhost:3000'),
 
   betterAuthSecret: process.env['BETTER_AUTH_SECRET'] ?? '',
+
+  geminiApiKey: process.env['GEMINI_API_KEY'] ?? '',
+  // Sans clé, le mode simulé s'impose : un poste neuf démarre sans rien configurer.
+  aiMode: (process.env['AI_MODE'] || (process.env['GEMINI_API_KEY'] ? 'gemini' : 'mock')) as string,
+  geminiGeneratorModel: optional('GEMINI_MODEL_GENERATOR', 'gemini-2.5-flash'),
+  geminiJudgeModel: optional('GEMINI_MODEL_JUDGE', 'gemini-2.5-flash'),
+  mockLatencyMs: Number(optional('MOCK_LATENCY_MS', '1500')),
 } as const
+
+if (env.aiMode !== 'mock' && env.aiMode !== 'gemini') {
+  throw new Error(`AI_MODE vaut « ${env.aiMode} » : valeurs acceptées « mock » ou « gemini ».`)
+}
+
+if (env.aiMode === 'gemini' && !env.geminiApiKey) {
+  throw new Error(
+    'AI_MODE=gemini exige GEMINI_API_KEY. Pour tester sans consommer de jetons : AI_MODE=mock.',
+  )
+}
 
 export const isProduction = env.nodeEnv === 'production'
 

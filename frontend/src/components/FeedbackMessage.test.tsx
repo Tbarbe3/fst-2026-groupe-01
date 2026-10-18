@@ -32,4 +32,9 @@ describe('FeedbackMessage', () => {
     )
     expect(container.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
   })
+
+  it('préfixe une information pour la distinguer d’un succès', () => {
+    render(<FeedbackMessage kind="info">Mode dégradé.</FeedbackMessage>)
+    expect(screen.getByRole('status')).toHaveTextContent('Information :')
+  })
 })

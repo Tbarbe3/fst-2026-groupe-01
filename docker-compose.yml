@@ -92,6 +92,8 @@ services:
       # Better Auth marque les cookies de session comme Secure.
       BETTER_AUTH_URL: https://${DOMAIN}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AI_MODE: ${AI_MODE:-}
     labels:
       - "traefik.enable=true"
       # Comme adminer, ce conteneur est sur `web` et `internal` : il faut

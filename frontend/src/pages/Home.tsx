@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import {
   Code2,
   Terminal,
@@ -15,22 +15,12 @@ import {
   LayoutDashboard,
   LogIn,
   UserPlus,
-  LogOut,
   ChevronRight,
-  FileCode2,
   Flame,
 } from 'lucide-react'
 
 import { authClient } from '../auth'
-import ThemeToggle from '../components/ThemeToggle'
-
-interface DiffLine {
-  oldLineNumber?: number
-  newLineNumber?: number
-  type: 'context' | 'delete' | 'add'
-  code: string
-  isVulnerable?: boolean
-}
+import DiffViewer, { type DiffLine } from '../components/DiffViewer'
 
 interface DemoScenario {
   id: string
@@ -311,11 +301,9 @@ const SUPPORTED_LANGUAGES = [
 ]
 
 export default function Home() {
-  const navigate = useNavigate()
   const { data: session } = authClient.useSession()
   const isAuthenticated = Boolean(session?.user)
   const displayName = session?.user?.name || session?.user?.email || 'Développeur'
-  const userInitial = displayName.charAt(0).toUpperCase()
 
   const [activeTabId, setActiveTabId] = useState<string>('typescript')
   const [viewMode, setViewMode] = useState<'anomaly' | 'solution'>('anomaly')
@@ -323,101 +311,10 @@ export default function Home() {
   const currentScenario =
     DEMO_SCENARIOS.find((s) => s.id === activeTabId) || DEMO_SCENARIOS[0]
 
-  const handleLogout = async () => {
-    try {
-      await authClient.signOut()
-    } catch {
-      // Ignoré si échec réseau
-    }
-    await navigate('/', { replace: true })
-  }
-
   return (
-    <div className="landing-page">
-      {/* 1. Header / Barre de navigation principale */}
-      <header className="landing-header" role="banner">
-        <div className="landing-header-inner">
-          <Link to="/" className="landing-brand" aria-label="Accueil Code How?">
-            <div className="brand-icon-wrapper">
-              <Code2 size={22} className="brand-icon" />
-            </div>
-            <span className="brand-name">Code How?</span>
-            <span className="brand-badge">IA Review</span>
-          </Link>
+    <div className="landing-content">
 
-          <nav className="landing-nav" aria-label="Navigation principale">
-            <a href="#demo" className="nav-link">
-              Démo de Code
-            </a>
-            <a href="#languages" className="nav-link">
-              Langages
-            </a>
-            <a href="#workflow" className="nav-link">
-              Méthode
-            </a>
-            <a href="#progression" className="nav-link">
-              Progression
-            </a>
-          </nav>
-
-          <div className="landing-actions">
-            <ThemeToggle className="theme-toggle-inline" />
-
-            {/* Bouton d'accès au tableau de bord — visible uniquement si connecté */}
-            {isAuthenticated && (
-              <Link
-                to="/dashboard"
-                className="btn-dashboard-nav"
-                title="Accéder au tableau de bord"
-              >
-                <LayoutDashboard size={16} />
-                <span>Tableau de bord</span>
-              </Link>
-            )}
-
-            {isAuthenticated ? (
-              <div className="user-nav-group">
-                <div className="user-chip" title={`Connecté en tant que ${displayName}`}>
-                  <div className="user-chip-avatar">
-                    {session?.user?.image ? (
-                      <img
-                        src={session.user.image}
-                        alt="Avatar"
-                        className="avatar-img"
-                      />
-                    ) : (
-                      userInitial
-                    )}
-                  </div>
-                  <span className="user-chip-name">{displayName}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="btn-icon-nav"
-                  title="Se déconnecter"
-                  aria-label="Se déconnecter"
-                >
-                  <LogOut size={16} />
-                </button>
-              </div>
-            ) : (
-              <div className="auth-nav-group">
-                <Link to="/login" className="btn-nav-login">
-                  <LogIn size={15} />
-                  <span>Se connecter</span>
-                </Link>
-                <Link to="/register" className="btn-nav-register">
-                  <UserPlus size={15} />
-                  <span>S’inscrire</span>
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <main className="landing-main">
+      <div className="landing-main">
         {/* 2. Hero Section */}
         <section className="hero-section" aria-labelledby="hero-title">
           <div className="hero-container">
@@ -609,45 +506,14 @@ export default function Home() {
               </div>
 
               {/* Fichier et Diff Viewer */}
-              <div className="diff-viewer">
-                <div className="diff-file-bar">
-                  <div className="diff-file-name">
-                    <FileCode2 size={16} />
-                    <code>{currentScenario.filename}</code>
-                  </div>
-                  <div className="diff-file-stats">
-                    <span className="stat-added">+3</span>
-                    <span className="stat-deleted">-1</span>
-                  </div>
-                </div>
-
-                <div className="diff-code-body">
-                  {(viewMode === 'anomaly'
+              <DiffViewer
+                filename={currentScenario.filename}
+                lines={
+                  viewMode === 'anomaly'
                     ? currentScenario.diff
-                    : currentScenario.fixedDiff
-                  ).map((line, idx) => (
-                    <div
-                      key={idx}
-                      className={`diff-row row-${line.type} ${
-                        line.isVulnerable && viewMode === 'anomaly' ? 'is-vulnerable-row' : ''
-                      }`}
-                    >
-                      <div className="line-num line-num-old">
-                        {line.oldLineNumber ?? ''}
-                      </div>
-                      <div className="line-num line-num-new">
-                        {line.newLineNumber ?? ''}
-                      </div>
-                      <div className="line-marker">
-                        {line.type === 'add' ? '+' : line.type === 'delete' ? '-' : ' '}
-                      </div>
-                      <div className="line-code">
-                        <code>{line.code}</code>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
+                    : currentScenario.fixedDiff.map((line) => ({ ...line, isVulnerable: false }))
+                }
+              >
                 {/* Annotation & Commentaire de revue inline */}
                 {viewMode === 'anomaly' && (
                   <div className="inline-review-box">
@@ -698,7 +564,7 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-              </div>
+              </DiffViewer>
             </div>
           </div>
         </section>
@@ -944,85 +810,8 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
-      {/* 8. Footer professionnel */}
-      <footer className="landing-footer" role="contentinfo">
-        <div className="landing-footer-inner">
-          <div className="footer-brand-col">
-            <div className="landing-brand">
-              <div className="brand-icon-wrapper">
-                <Code2 size={20} className="brand-icon" />
-              </div>
-              <span className="brand-name">Code How?</span>
-            </div>
-            <p className="footer-brand-desc">
-              La plateforme d'entraînement à la relecture critique de code, à la sécurité
-              applicative (OWASP) et aux bonnes pratiques de Pull Request.
-            </p>
-          </div>
-
-          <div className="footer-links-col">
-            <div className="footer-links-title">Plateforme</div>
-            <ul className="footer-links-list">
-              <li>
-                <a href="#demo">Démo de Code</a>
-              </li>
-              <li>
-                <a href="#languages">Langages supportés</a>
-              </li>
-              <li>
-                <a href="#workflow">Méthode & Workflow</a>
-              </li>
-              <li>
-                <Link to="/dashboard">Tableau de bord</Link>
-              </li>
-            </ul>
-          </div>
-
-          <div className="footer-links-col">
-            <div className="footer-links-title">Compte & Accès</div>
-            <ul className="footer-links-list">
-              {isAuthenticated ? (
-                <>
-                  <li>
-                    <Link to="/dashboard">Mon profil</Link>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="footer-btn-link"
-                    >
-                      Se déconnecter
-                    </button>
-                  </li>
-                </>
-              ) : (
-                <>
-                  <li>
-                    <Link to="/login">Se connecter</Link>
-                  </li>
-                  <li>
-                    <Link to="/register">S'inscrire</Link>
-                  </li>
-                </>
-              )}
-            </ul>
-          </div>
-
-          <div className="footer-links-col">
-            <div className="footer-links-title">Qualité & Normes</div>
-            <p className="footer-note">
-              Interface accessible conforme WCAG AA avec contrastes vérifiés et navigation clavier complète.
-            </p>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          <p>© 2026 Code How? • Projet Technologies Web — Tous droits réservés.</p>
-        </div>
-      </footer>
     </div>
   )
 }
