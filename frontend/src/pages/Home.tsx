@@ -367,10 +367,6 @@ export default function Home() {
                     <LogIn size={18} />
                     <span>Se connecter</span>
                   </Link>
-                  <Link to="/dashboard" className="hero-btn-outline">
-                    <LayoutDashboard size={18} />
-                    <span>Accéder au Dashboard</span>
-                  </Link>
                 </>
               )}
             </div>
@@ -808,10 +804,6 @@ export default function Home() {
                   <Link to="/login" className="hero-btn-secondary">
                     <LogIn size={18} />
                     <span>Se connecter</span>
-                  </Link>
-                  <Link to="/dashboard" className="hero-btn-outline">
-                    <LayoutDashboard size={18} />
-                    <span>Accéder au Dashboard</span>
                   </Link>
                 </>
               )}
