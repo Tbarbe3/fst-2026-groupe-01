@@ -33,38 +33,54 @@ import ChallengeLauncher from '../components/ChallengeLauncher'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, LANGUAGE_LABELS, label } from '../labels'
+import { useI18n, type Locale } from '../i18n'
+import {
+  getCategoryLabels,
+  getDifficultyLabels,
+  getLanguageLabels,
+  label,
+} from '../labels'
 
-function getAuditorRank(count: number, avgScore: number) {
+function getAuditorRank(count: number, avgScore: number, locale: Locale, t: (k: string, p?: Record<string, string | number>) => string) {
   if (count === 0) {
     return {
-      title: 'Novice',
+      title: t('dashboard.rankNovice'),
       progress: 0,
-      desc: 'Terminez votre 1ère revue de code pour débloquer le rang d’Apprenti.',
+      desc: t('dashboard.rankNoviceDesc'),
     }
   }
   if (count < 3) {
+    const remaining = 3 - count
     return {
-      title: 'Apprenti Reviewer',
+      title: t('dashboard.rankApprentice'),
       progress: Math.round((count / 3) * 100),
-      desc: `${3 - count} revue${3 - count > 1 ? 's' : ''} restante${3 - count > 1 ? 's' : ''} pour passer Reviewer Confirmé.`,
+      desc: t('dashboard.rankApprenticeDesc', {
+        count: remaining,
+        p1: remaining > 1 ? 's' : '',
+        p2: locale === 'fr' && remaining > 1 ? 's' : '',
+      }),
     }
   }
   if (count < 8) {
+    const remaining = 8 - count
     return {
-      title: 'Reviewer Confirmé',
+      title: t('dashboard.rankConfirmed'),
       progress: Math.round(((count - 3) / 5) * 100),
-      desc: `${8 - count} revue${8 - count > 1 ? 's' : ''} avant d’atteindre le rang d’Auditeur Senior.`,
+      desc: t('dashboard.rankConfirmedDesc', {
+        count: remaining,
+        p1: remaining > 1 ? 's' : '',
+      }),
     }
   }
   return {
-    title: 'Auditeur Senior 🏆',
+    title: t('dashboard.rankSenior'),
     progress: 100,
-    desc: `Expert de la revue de code avec ${avgScore}% de score moyen.`,
+    desc: t('dashboard.rankSeniorDesc', { avg: avgScore }),
   }
 }
 
 export default function Dashboard() {
+  const { locale, t, formatDate } = useI18n()
   const { data: session } = authClient.useSession()
   const displayName = session?.user?.name || session?.user?.email || 'Développeur'
 
@@ -72,6 +88,10 @@ export default function Dashboard() {
   const [expandedTheme, setExpandedTheme] = useState<string | null>(null)
   const [history, setHistory] = useState<AttemptSummary[] | null>(null)
   const [historyError, setHistoryError] = useState('')
+
+  const categoryLabels = getCategoryLabels(locale)
+  const difficultyLabels = getDifficultyLabels(locale)
+  const languageLabels = getLanguageLabels()
 
   useEffect(() => {
     let cancelled = false
@@ -83,12 +103,14 @@ export default function Dashboard() {
         setExpandedTheme(attempts[attempts.length - 1]?.category ?? null)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setHistoryError(describeNetworkError(err) ?? "Impossible de charger l'historique.")
+        if (!cancelled) {
+          setHistoryError(describeNetworkError(err, locale) ?? t('dashboard.historyError'))
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [locale, t])
 
   const allHistory = history ?? []
   const themes = Array.from(new Set(allHistory.map((s) => s.category)))
@@ -101,7 +123,7 @@ export default function Dashboard() {
   const chartData = [...filteredHistory]
     .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime())
     .map((s) => ({
-      name: new Date(s.submittedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+      name: formatDate(s.submittedAt, { day: 'numeric', month: 'short' }),
       score: s.score,
     }))
 
@@ -113,7 +135,7 @@ export default function Dashboard() {
   const bestScore = totalScenarios > 0 ? Math.max(...filteredHistory.map((s) => s.score)) : 0
   const lastScore = totalScenarios > 0 ? filteredHistory[filteredHistory.length - 1].score : 0
 
-  const rankInfo = getAuditorRank(allHistory.length, averageScore)
+  const rankInfo = getAuditorRank(allHistory.length, averageScore, locale, t)
 
   return (
     <div className="dashboard-page">
@@ -123,15 +145,13 @@ export default function Dashboard() {
           <div className="hero-welcome-badge" role="status">
             <LayoutDashboard size={15} aria-hidden="true" />
             <span>
-              Tableau de bord de <strong className="welcome-pseudo">{displayName}</strong>
+              {t('dashboard.welcomeBadge')} <strong className="welcome-pseudo">{displayName}</strong>
             </span>
           </div>
           <h1 id="dashboard-title" className="hero-title">
-            Votre espace personnel <span className="hero-title-highlight">de progression</span>
+            {t('dashboard.heroTitle')} <span className="hero-title-highlight">{t('dashboard.heroTitleHighlight')}</span>
           </h1>
-          <p className="hero-description">
-            Analysez l'historique de vos revues, suivez l'évolution de vos scores et lancez de nouveaux challenges d'entraînement.
-          </p>
+          <p className="hero-description">{t('dashboard.heroDesc')}</p>
         </div>
       </section>
 
@@ -143,10 +163,13 @@ export default function Dashboard() {
             <div className="panel-title">
               <div className="panel-title-main">
                 <BookOpen className="panel-title-icon" size={20} aria-hidden="true" />
-                <h2>Historique</h2>
+                <h2>{t('dashboard.historyTitle')}</h2>
               </div>
               {allHistory.length > 0 && (
-                <span className="panel-badge" title={`${allHistory.length} challenges terminés`}>
+                <span
+                  className="panel-badge"
+                  title={t('dashboard.challengesCompleted', { count: allHistory.length })}
+                >
                   {allHistory.length}
                 </span>
               )}
@@ -158,17 +181,19 @@ export default function Dashboard() {
               onClick={() => setSelectedScenarioId(null)}
             >
               <Plus size={16} aria-hidden="true" />
-              <span>Nouveau challenge</span>
+              <span>{t('dashboard.newChallenge')}</span>
             </button>
 
             <div className="scenario-list">
-              {history === null && !historyError && <LoadingScreen label="Chargement de l'historique…" />}
+              {history === null && !historyError && (
+                <LoadingScreen label={t('dashboard.loadingHistory')} />
+              )}
               {historyError && <FeedbackMessage kind="error">{historyError}</FeedbackMessage>}
               {history?.length === 0 && (
                 <div className="empty-history-box">
                   <BookOpen size={32} className="empty-history-icon" aria-hidden="true" />
-                  <p className="empty-history-title">Aucune revue terminée</p>
-                  <p className="empty-history-sub">Lancez votre premier challenge pour commencer à bâtir votre historique d'audit.</p>
+                  <p className="empty-history-title">{t('dashboard.emptyHistoryTitle')}</p>
+                  <p className="empty-history-sub">{t('dashboard.emptyHistorySub')}</p>
                 </div>
               )}
               {themes.map((theme) => {
@@ -188,7 +213,7 @@ export default function Dashboard() {
                         ) : (
                           <Zap size={16} aria-hidden="true" />
                         )}
-                        <span>{label(CATEGORY_LABELS, theme)}</span>
+                        <span>{label(categoryLabels, theme, locale)}</span>
                       </span>
                       <span className="theme-header-right">
                         <span className="theme-count">{scenariosForTheme.length}</span>
@@ -224,11 +249,11 @@ export default function Dashboard() {
                             </div>
                             <div className="scenario-meta">
                               <span className="meta-tag">
-                                <Code2 size={12} aria-hidden="true" /> {label(LANGUAGE_LABELS, scenario.language)}
+                                <Code2 size={12} aria-hidden="true" /> {label(languageLabels, scenario.language, locale)}
                               </span>
-                              <span className="meta-tag">{label(DIFFICULTY_LABELS, scenario.difficulty)}</span>
+                              <span className="meta-tag">{label(difficultyLabels, scenario.difficulty, locale)}</span>
                               <span className="scenario-date">
-                                {new Date(scenario.submittedAt).toLocaleDateString('fr-FR', {
+                                {formatDate(scenario.submittedAt, {
                                   day: 'numeric',
                                   month: 'short',
                                 })}
@@ -251,12 +276,12 @@ export default function Dashboard() {
                 {selectedScenario ? (
                   <>
                     <Activity className="panel-title-icon" size={20} aria-hidden="true" />
-                    <h2>Détails du challenge</h2>
+                    <h2>{t('dashboard.challengeDetails')}</h2>
                   </>
                 ) : (
                   <>
                     <Sparkles className="panel-title-icon" size={20} aria-hidden="true" />
-                    <h2>Nouveau challenge</h2>
+                    <h2>{t('dashboard.newChallenge')}</h2>
                   </>
                 )}
               </div>
@@ -265,10 +290,10 @@ export default function Dashboard() {
                   type="button"
                   className="btn-switch-launcher"
                   onClick={() => setSelectedScenarioId(null)}
-                  title="Revenir au lanceur de challenge"
+                  title={t('dashboard.newChallenge')}
                 >
                   <Plus size={14} aria-hidden="true" />
-                  <span>Nouveau challenge</span>
+                  <span>{t('dashboard.newChallenge')}</span>
                 </button>
               )}
             </div>
@@ -288,13 +313,13 @@ export default function Dashboard() {
                     <div className="score-hero-text">
                       <div className="score-badge-label">
                         {selectedScenario.score >= 80
-                          ? 'Excellente analyse'
+                          ? t('dashboard.excellentAnalysis')
                           : selectedScenario.score >= 60
-                            ? 'Bonne analyse'
-                            : 'Analyse à perfectionner'}
+                            ? t('dashboard.goodAnalysis')
+                            : t('dashboard.needsWork')}
                       </div>
-                      <h3>Score d'évaluation</h3>
-                      <p>Ce score reflète la précision de votre détection et la pertinence de vos remarques.</p>
+                      <h3>{t('dashboard.evalScore')}</h3>
+                      <p>{t('dashboard.scoreHelp')}</p>
                     </div>
                   </div>
 
@@ -306,23 +331,24 @@ export default function Dashboard() {
                     <div className="scenario-detail-body">
                       <div className="scenario-tags-row">
                         <span className="tag-badge">
-                          <strong>Langage :</strong> {label(LANGUAGE_LABELS, selectedScenario.language)}
+                          <strong>{t('dashboard.language')}</strong> {label(languageLabels, selectedScenario.language, locale)}
                         </span>
                         <span className="tag-badge">
-                          <strong>Niveau :</strong> {label(DIFFICULTY_LABELS, selectedScenario.difficulty)}
+                          <strong>{t('dashboard.level')}</strong> {label(difficultyLabels, selectedScenario.difficulty, locale)}
                         </span>
                         <span className="tag-badge">
-                          <strong>Catégorie :</strong> {label(CATEGORY_LABELS, selectedScenario.category)}
+                          <strong>{t('dashboard.category')}</strong> {label(categoryLabels, selectedScenario.category, locale)}
                         </span>
                       </div>
                       <div className="scenario-submitted-date">
                         <Calendar size={14} aria-hidden="true" />
                         <span>
-                          Terminé le{' '}
-                          {new Date(selectedScenario.submittedAt).toLocaleDateString('fr-FR', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
+                          {t('dashboard.completedOn', {
+                            date: formatDate(selectedScenario.submittedAt, {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            }),
                           })}
                         </span>
                       </div>
@@ -332,7 +358,7 @@ export default function Dashboard() {
                   <div className="scenario-detail-actions">
                     <Link to={`/review/${selectedScenario.id}/result`} className="btn-debrief-primary">
                       <CheckCircle2 size={18} aria-hidden="true" />
-                      <span>Consulter le débriefing complet</span>
+                      <span>{t('dashboard.viewFullDebrief')}</span>
                       <ArrowRight size={16} aria-hidden="true" />
                     </Link>
                     <button
@@ -341,17 +367,14 @@ export default function Dashboard() {
                       onClick={() => setSelectedScenarioId(null)}
                     >
                       <Plus size={16} aria-hidden="true" />
-                      <span>Lancer un autre challenge</span>
+                      <span>{t('dashboard.launchAnother')}</span>
                     </button>
                   </div>
                 </>
               ) : (
                 <>
                   <div className="launcher-intro-card">
-                    <p>
-                      Sélectionnez vos critères pour générer un scénario sur-mesure ou tentez le{' '}
-                      <strong>mode Mystère</strong> pour un challenge surprise.
-                    </p>
+                    <p>{t('dashboard.launcherIntro')}</p>
                   </div>
                   <ChallengeLauncher />
                 </>
@@ -364,11 +387,11 @@ export default function Dashboard() {
             <div className="panel-title">
               <div className="panel-title-main">
                 <Award className="panel-title-icon" size={20} aria-hidden="true" />
-                <h2>Progression</h2>
+                <h2>{t('dashboard.progressionTitle')}</h2>
               </div>
               {expandedTheme && (
-                <span className="filter-active-pill" title={`Filtre : ${label(CATEGORY_LABELS, expandedTheme)}`}>
-                  {label(CATEGORY_LABELS, expandedTheme)}
+                <span className="filter-active-pill" title={`${t('dashboard.filterPrefix')} ${label(categoryLabels, expandedTheme, locale)}`}>
+                  {label(categoryLabels, expandedTheme, locale)}
                 </span>
               )}
             </div>
@@ -377,30 +400,33 @@ export default function Dashboard() {
               <div className="stat-card">
                 <BookOpen size={18} className="stat-card-icon" aria-hidden="true" />
                 <div className="stat-value">{totalScenarios}</div>
-                <div className="stat-label">Scénarios</div>
+                <div className="stat-label">{t('dashboard.statScenarios')}</div>
               </div>
               <div className="stat-card">
                 <TrendingUp size={18} className="stat-card-icon" aria-hidden="true" />
                 <div className="stat-value">{averageScore}%</div>
-                <div className="stat-label">Moyenne</div>
+                <div className="stat-label">{t('dashboard.statAvg')}</div>
               </div>
               <div className="stat-card">
                 <Award size={18} className="stat-card-icon" aria-hidden="true" />
                 <div className="stat-value">{bestScore}%</div>
-                <div className="stat-label">Meilleur</div>
+                <div className="stat-label">{t('dashboard.statBest')}</div>
               </div>
               <div className="stat-card">
                 <Target size={18} className="stat-card-icon" aria-hidden="true" />
                 <div className="stat-value">{totalScenarios > 0 ? `${lastScore}%` : '—'}</div>
-                <div className="stat-label">Dernier</div>
+                <div className="stat-label">{t('dashboard.statLast')}</div>
               </div>
             </div>
 
             <div className="chart-header">
-              <span>Évolution des scores</span>
+              <span>{t('dashboard.scoreEvolution')}</span>
               {filteredHistory.length > 0 && (
                 <span className="chart-count">
-                  {filteredHistory.length} point{filteredHistory.length > 1 ? 's' : ''}
+                  {t('dashboard.pointCount', {
+                    count: filteredHistory.length,
+                    plural: filteredHistory.length > 1 ? (locale === 'fr' ? 's' : 's') : '',
+                  })}
                 </span>
               )}
             </div>
@@ -408,8 +434,8 @@ export default function Dashboard() {
             {filteredHistory.length === 0 ? (
               <div className="chart-empty-state">
                 <TrendingUp size={32} className="chart-empty-icon" aria-hidden="true" />
-                <p>Aucune donnée de score</p>
-                <span>Terminez un challenge pour visualiser votre courbe de progression.</span>
+                <p>{t('dashboard.noScoreData')}</p>
+                <span>{t('dashboard.noScoreDataSub')}</span>
               </div>
             ) : (
               <div className="chart-container">
@@ -451,7 +477,7 @@ export default function Dashboard() {
 
             <div className="auditor-rank-card">
               <div className="rank-header">
-                <span className="rank-title">Rang d'auditeur</span>
+                <span className="rank-title">{t('dashboard.auditorRank')}</span>
                 <span className="rank-badge">{rankInfo.title}</span>
               </div>
               <div className="rank-progress-bar">

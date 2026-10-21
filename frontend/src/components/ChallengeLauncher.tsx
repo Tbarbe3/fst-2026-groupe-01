@@ -4,7 +4,12 @@ import { HelpCircle, Play } from 'lucide-react'
 
 import { challengesApi } from '../api/challenges'
 import { describeNetworkError } from '../errors/network-error'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, LANGUAGE_LABELS } from '../labels'
+import { useI18n } from '../i18n'
+import {
+  getCategoryLabels,
+  getDifficultyLabels,
+  getLanguageLabels,
+} from '../labels'
 import FeedbackMessage from './FeedbackMessage'
 import LoadingScreen from './LoadingScreen'
 
@@ -16,12 +21,17 @@ const options = (labels: Record<string, string>) =>
   ))
 
 export default function ChallengeLauncher() {
+  const { locale, t } = useI18n()
   const navigate = useNavigate()
   const [language, setLanguage] = useState('typescript')
   const [difficulty, setDifficulty] = useState('junior')
   const [category, setCategory] = useState('security_owasp')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
+
+  const categoryLabels = getCategoryLabels(locale)
+  const difficultyLabels = getDifficultyLabels(locale)
+  const languageLabels = getLanguageLabels()
 
   const launch = async (mystery: boolean) => {
     setError('')
@@ -32,13 +42,16 @@ export default function ChallengeLauncher() {
       )
       await navigate(`/review/${attemptId}`)
     } catch (err: unknown) {
-      setError(describeNetworkError(err) ?? (err instanceof Error ? err.message : 'Impossible de créer le challenge.'))
+      setError(
+        describeNetworkError(err, locale) ??
+          (err instanceof Error ? err.message : t('launcher.error')),
+      )
       setPending(false)
     }
   }
 
   // La génération par l'IA prend de 10 à 30 secondes.
-  if (pending) return <LoadingScreen label="Préparation de la pull request…" />
+  if (pending) return <LoadingScreen label={t('launcher.preparing')} />
 
   return (
     <form
@@ -50,38 +63,38 @@ export default function ChallengeLauncher() {
     >
       <div className="launcher-fields">
         <label className="launcher-field">
-          <span>Langage</span>
+          <span>{t('launcher.language')}</span>
           <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-            {options(LANGUAGE_LABELS)}
+            {options(languageLabels)}
           </select>
         </label>
         <label className="launcher-field">
-          <span>Difficulté</span>
+          <span>{t('launcher.difficulty')}</span>
           <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-            {options(DIFFICULTY_LABELS)}
+            {options(difficultyLabels)}
           </select>
         </label>
         <label className="launcher-field">
-          <span>Type d’erreur</span>
+          <span>{t('launcher.category')}</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {options(CATEGORY_LABELS)}
+            {options(categoryLabels)}
           </select>
         </label>
       </div>
 
-      <div className="form-feedback" data-visible={Boolean(error)}>{error && <FeedbackMessage kind="error">{error}</FeedbackMessage>}</div>
+      <div className="form-feedback" data-visible={Boolean(error)}>
+        {error && <FeedbackMessage kind="error">{error}</FeedbackMessage>}
+      </div>
 
       <div className="launcher-actions">
         <button type="submit" className="btn btn-primary">
-          <Play size={16} aria-hidden="true" /> Lancer le challenge
+          <Play size={16} aria-hidden="true" /> {t('launcher.launch')}
         </button>
         <button type="button" className="btn btn-mystery" onClick={() => void launch(true)}>
-          <HelpCircle size={16} aria-hidden="true" /> Mode Mystère
+          <HelpCircle size={16} aria-hidden="true" /> {t('launcher.mystery')}
         </button>
       </div>
-      <p className="launcher-hint">
-        Le mode Mystère tire au hasard le langage, la difficulté et le type d’erreur, sans vous les révéler.
-      </p>
+      <p className="launcher-hint">{t('launcher.hint')}</p>
     </form>
   )
 }
