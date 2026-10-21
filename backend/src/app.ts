@@ -106,9 +106,7 @@ export async function buildApp(): Promise<FastifyInstance> {
       return reply.send()
     }
 
-    // On renvoie le texte brut. Si c'est "null", Fastify enverra bien la chaîne "null" 
-    // qui sera parsée en `null` valide côté client.
-    // Cela évite que reply.send(null) ne génère un corps totalement vide.
+    // Texte brut : reply.send(null) produirait un corps vide, et non la chaîne "null" attendue.
     return reply.send(text)
   })
 

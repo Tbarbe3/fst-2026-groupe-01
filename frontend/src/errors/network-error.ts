@@ -1,18 +1,17 @@
-import { getCurrentLocale, type Locale } from '../i18n'
+import { getCurrentLocale, translate, type Locale } from '@/i18n'
 
 /**
- * Détecte un échec réseau (API injoignable) plutôt qu'une erreur applicative.
- * `fetch` rejette alors avec un `TypeError` dont le message vient du
- * navigateur, non traduit (« Failed to fetch », « NetworkError... »).
+ * Détecte un échec réseau (API injoignable) plutôt qu'une erreur applicative :
+ * `fetch` rejette alors avec un `TypeError` au message non traduit.
  */
 export function describeNetworkError(
   error: unknown,
   locale: Locale = getCurrentLocale(),
 ): string | null {
-  if (error instanceof TypeError) {
-    return locale === 'en'
-      ? "Unable to contact the server. Make sure it is running, then try again."
-      : "Impossible de contacter le serveur. Vérifiez qu'il est démarré, puis réessayez."
-  }
-  return null
+  return error instanceof TypeError ? translate(locale, 'common.networkError') : null
+}
+
+/** Message d'une erreur d'API : réseau, sinon message du serveur, sinon repli. */
+export function describeError(error: unknown, fallback: string, locale: Locale = getCurrentLocale()): string {
+  return describeNetworkError(error, locale) ?? (error instanceof Error ? error.message : fallback)
 }

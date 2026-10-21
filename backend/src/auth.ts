@@ -43,6 +43,9 @@ export const auth = betterAuth({
       // courrier, exiger une confirmation bloquerait tout changement.
       updateEmailWithoutVerification: true,
     },
+    // Le mot de passe est exigé côté client ; les tentatives partent en
+    // cascade (review_attempts ON DELETE CASCADE).
+    deleteUser: { enabled: true },
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {

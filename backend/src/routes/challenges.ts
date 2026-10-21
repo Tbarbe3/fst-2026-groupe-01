@@ -1,4 +1,4 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify'
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify'
 
 import type { AiProvider } from '../ai/provider.js'
 import { generateScenario, judgeAttempt } from '../ai/service.js'
@@ -6,7 +6,9 @@ import {
   CATEGORIES,
   DIFFICULTIES,
   LANGUAGES,
+  LOCALES,
   type GenerationParams,
+  type Locale,
   type SubmittedComment,
 } from '../ai/types.js'
 import type { AttemptRecord, ChallengesRepo } from '../db/challenges-repo.js'
@@ -41,6 +43,20 @@ export function toAttemptView(attempt: AttemptRecord) {
   return { ...attempt, scenario: { ...scenario, groundTruth } }
 }
 
+// Le `code` est stable et traduit par le front ; le message sert de repli lisible.
+const API_ERRORS = {
+  UNAUTHORIZED: [401, 'Unauthorized', 'Connexion requise.'],
+  MISSING_PARAMS: [400, 'Bad Request', 'Choisissez un langage, une difficulté et une catégorie, ou le mode Mystère.'],
+  ATTEMPT_NOT_FOUND: [404, 'Not Found', 'Challenge introuvable.'],
+  ALREADY_SUBMITTED: [409, 'Conflict', 'Cette revue a déjà été soumise.'],
+  INVALID_COMMENT: [400, 'Bad Request', 'Un commentaire vise une ligne absente du diff ou est vide.'],
+} as const
+
+export function sendApiError(reply: FastifyReply, code: keyof typeof API_ERRORS) {
+  const [statusCode, error, message] = API_ERRORS[code]
+  return reply.status(statusCode).send({ statusCode, error, code, message })
+}
+
 function pick<T>(values: readonly T[], random: () => number): T {
   return values[Math.floor(random() * values.length)]!
 }
@@ -52,12 +68,12 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
   app.addHook('preHandler', async (request, reply) => {
     const userId = await opts.getUserId(request)
     if (!userId) {
-      return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Connexion requise.' })
+      return sendApiError(reply, 'UNAUTHORIZED')
     }
     request.userId = userId
   })
 
-  app.post<{ Body: { mystery?: boolean; language?: string; difficulty?: string; category?: string } }>(
+  app.post<{ Body: { mystery?: boolean; language?: string; difficulty?: string; category?: string; locale?: Locale } }>(
     '/challenges',
     {
       config: { rateLimit: GENERATION_RATE_LIMIT },
@@ -70,6 +86,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
             language: { type: 'string', enum: [...LANGUAGES] },
             difficulty: { type: 'string', enum: [...DIFFICULTIES] },
             category: { type: 'string', enum: [...CATEGORIES] },
+            locale: { type: 'string', enum: [...LOCALES] },
           },
         },
       },
@@ -78,16 +95,13 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
       const body = request.body
       const mystery = body.mystery === true
       if (!mystery && (!body.language || !body.difficulty || !body.category)) {
-        return reply.status(400).send({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: 'Choisissez un langage, une difficulté et une catégorie, ou le mode Mystère.',
-        })
+        return sendApiError(reply, 'MISSING_PARAMS')
       }
       const params = {
         language: body.language ?? pick(LANGUAGES, random),
         difficulty: mystery ? pick(DIFFICULTIES, random) : body.difficulty,
         category: mystery ? pick(CATEGORIES, random) : body.category,
+        locale: body.locale ?? 'fr',
       } as GenerationParams
 
       // Un scénario déjà en base ne coûte aucun appel à l'IA.
@@ -106,12 +120,12 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
   app.get<{ Params: { id: string } }>('/attempts/:id', async (request, reply) => {
     const attempt = await repo.getAttempt(request.params.id, request.userId)
     if (!attempt) {
-      return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Challenge introuvable.' })
+      return sendApiError(reply, 'ATTEMPT_NOT_FOUND')
     }
     return toAttemptView(attempt)
   })
 
-  app.post<{ Params: { id: string }; Body: { comments: SubmittedComment[] } }>(
+  app.post<{ Params: { id: string }; Body: { comments: SubmittedComment[]; locale?: Locale } }>(
     '/attempts/:id/submit',
     {
       // 30 commentaires de 2 000 caractères dépassent les 64 Kio globaux.
@@ -122,6 +136,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
           required: ['comments'],
           additionalProperties: false,
           properties: {
+            locale: { type: 'string', enum: [...LOCALES] },
             comments: {
               type: 'array',
               maxItems: MAX_COMMENTS,
@@ -143,10 +158,10 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
     async (request, reply) => {
       const attempt = await repo.getAttempt(request.params.id, request.userId)
       if (!attempt) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Challenge introuvable.' })
+        return sendApiError(reply, 'ATTEMPT_NOT_FOUND')
       }
       if (attempt.status !== 'in_progress') {
-        return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Cette revue a déjà été soumise.' })
+        return sendApiError(reply, 'ALREADY_SUBMITTED')
       }
 
       const comments = request.body.comments.map((c) => ({ ...c, text: c.text.trim() }))
@@ -156,18 +171,14 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
           .find((f) => f.path === comment.file_path)
           ?.lines.find((l) => l.newLineNumber === comment.line_number)
         if (!line || !comment.text) {
-          return reply.status(400).send({
-            statusCode: 400,
-            error: 'Bad Request',
-            message: `Commentaire invalide sur ${comment.file_path}, ligne ${comment.line_number}.`,
-          })
+          return sendApiError(reply, 'INVALID_COMMENT')
         }
         codeLines.push(line.code)
       }
 
       const judgement = await judgeAttempt(
         ai,
-        { groundTruth: attempt.scenario.groundTruth, comments, codeLines },
+        { groundTruth: attempt.scenario.groundTruth, comments, codeLines, locale: request.body.locale ?? 'fr' },
         request.log,
       )
       const saved = await repo.saveJudgement(
@@ -176,7 +187,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
         comments.map((c, i) => ({ ...c, ...judgement.verdicts[i]! })),
       )
       if (!saved) {
-        return reply.status(409).send({ statusCode: 409, error: 'Conflict', message: 'Cette revue a déjà été soumise.' })
+        return sendApiError(reply, 'ALREADY_SUBMITTED')
       }
       return { attemptId: attempt.id, score: judgement.score }
     },

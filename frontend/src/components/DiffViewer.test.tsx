@@ -41,4 +41,21 @@ describe('DiffViewer', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Commenter la ligne 2 de a.ts' }))
     expect(onCommentLine).toHaveBeenCalledWith(LINES[3])
   })
+
+  it('ouvre un commentaire au clic sur le code de la ligne', async () => {
+    const onCommentLine = vi.fn()
+    render(<DiffViewer filename="a.ts" lines={LINES} onCommentLine={onCommentLine} />)
+
+    await userEvent.click(screen.getByText('const b = 3'))
+    expect(onCommentLine).toHaveBeenCalledTimes(1)
+    expect(onCommentLine).toHaveBeenCalledWith(LINES[3])
+  })
+
+  it('ignore le clic sur une ligne supprimée', async () => {
+    const onCommentLine = vi.fn()
+    render(<DiffViewer filename="a.ts" lines={LINES} onCommentLine={onCommentLine} />)
+
+    await userEvent.click(screen.getByText('const b = 2'))
+    expect(onCommentLine).not.toHaveBeenCalled()
+  })
 })

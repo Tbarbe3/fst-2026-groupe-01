@@ -1,19 +1,31 @@
 import { useRef, useState } from 'react'
 import * as React from 'react'
+import { useNavigate } from 'react-router'
 import { Camera, Moon, Sun, Trash2, X } from 'lucide-react'
 
 import { authClient } from '../auth'
-import { translateAccountError } from '../errors/dashboard-errors'
+import { translateAuthError } from '../errors/auth-errors'
 import { describeNetworkError } from '../errors/network-error'
 import { describePasswordPolicy, validatePassword } from '../errors/password-policy'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 import FeedbackMessage from './FeedbackMessage'
+
+const THEME_CHOICES = [
+    { value: 'light', icon: Sun, label: 'account.themeLight' },
+    { value: 'dark', icon: Moon, label: 'account.themeDark' },
+] as const
+
+const LANG_CHOICES = [
+    { value: 'fr', label: 'account.langFr' },
+    { value: 'en', label: 'account.langEn' },
+] as const
 
 /** Paramètres du compte, ouverts depuis la barre de navigation. */
 export default function AccountModal({ onClose }: { onClose: () => void }) {
     const { locale, setLocale, t } = useI18n()
     const { data: session } = authClient.useSession()
+    const navigate = useNavigate()
     const [currentTheme, setCurrentTheme] = useState<Theme>(readStoredTheme)
 
     const [editingField, setEditingField] = useState<'name' | 'password' | null>(null)
@@ -48,7 +60,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 
         try {
             const { error } = await authClient.updateUser({ name: editName })
-            if (error) setEditError(translateAccountError(error, locale))
+            if (error) setEditError(translateAuthError(error, 'errors.generic', locale))
             else setEditingField(null)
         } catch (err: unknown) {
             setEditError(describeNetworkError(err, locale) ?? t('common.genericError'))
@@ -80,7 +92,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                 currentPassword: editPassCurrent,
                 revokeOtherSessions: true,
             })
-            if (error) setEditError(translateAccountError(error, locale))
+            if (error) setEditError(translateAuthError(error, 'errors.generic', locale))
             else setEditingField(null)
         } catch (err: unknown) {
             setEditError(describeNetworkError(err, locale) ?? t('common.genericError'))
@@ -89,7 +101,28 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         }
     }
 
-    const displayName = session?.user?.name || session?.user?.email || 'Utilisateur'
+    const [confirmingDelete, setConfirmingDelete] = useState(false)
+    const [deletePassword, setDeletePassword] = useState('')
+
+    const handleDeleteAccount = async () => {
+        setIsSaving(true)
+        setEditError('')
+        try {
+            const { error } = await authClient.deleteUser({ password: deletePassword })
+            if (error) {
+                setEditError(translateAuthError(error, 'errors.generic', locale))
+                return
+            }
+            onClose()
+            await navigate('/', { replace: true })
+        } catch (err: unknown) {
+            setEditError(describeNetworkError(err, locale) ?? t('common.genericError'))
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    const displayName = session?.user?.name || session?.user?.email || ''
     const initial = displayName.charAt(0).toUpperCase()
 
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -124,7 +157,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
             try {
                 const { error } = await authClient.updateUser({ image: compressedBase64 })
                 if (error) {
-                    setEditError(translateAccountError(error, locale))
+                    setEditError(translateAuthError(error, 'errors.generic', locale))
                 } else {
                     setAvatarUrl(compressedBase64)
                 }
@@ -142,7 +175,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         try {
             const { error } = await authClient.updateUser({ image: '' })
             if (error) {
-                setEditError(translateAccountError(error, locale))
+                setEditError(translateAuthError(error, 'errors.generic', locale))
             } else {
                 setAvatarUrl(undefined)
                 if (fileInputRef.current) fileInputRef.current.value = ''
@@ -153,6 +186,23 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
             setIsSaving(false)
         }
     }
+
+    const editButton = (field: 'name' | 'password') => (
+        <button type="button" className="btn-text" onClick={() => openEdit(field)}>
+            {t('common.edit')}
+        </button>
+    )
+
+    const editActions = (onSave: () => void) => (
+        <div className="setting-actions">
+            <button type="button" className="btn-text" onClick={() => setEditingField(null)} disabled={isSaving}>
+                {t('common.cancel')}
+            </button>
+            <button type="button" className="btn-primary-sm" onClick={onSave} disabled={isSaving}>
+                {isSaving ? t('common.saving') : t('common.save')}
+            </button>
+        </div>
+    )
 
     return (
         <div className="modal-overlay" onClick={onClose}>
@@ -172,131 +222,80 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                         </div>
                     </div>
 
-                    {/* Photo de profil */}
-                    <div className="setting-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div className="setting-info" style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: 0 }}>
-                            <div style={{ position: 'relative', width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden', background: 'var(--border)' }}>
-                                {currentAvatar ? (
-                                    <img
-                                        src={currentAvatar}
-                                        alt="Avatar"
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                    />
-                                ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontWeight: 'bold' }}>
-                                        {initial}
-                                    </div>
-                                )}
+                    <div className="setting-row">
+                        <div className="setting-avatar">
+                            <div className="avatar-preview">
+                                {currentAvatar ? <img src={currentAvatar} alt="" /> : initial}
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <label style={{ display: 'block', margin: 0 }}>{t('account.avatar')}</label>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('account.avatarHint')}</span>
+                            <div className="setting-info">
+                                <label htmlFor="avatar-input">{t('account.avatar')}</label>
+                                <span>{t('account.avatarHint')}</span>
                             </div>
                         </div>
-
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div className="setting-actions">
                             <input
+                                id="avatar-input"
                                 type="file"
                                 ref={fileInputRef}
-                                style={{ display: 'none' }}
+                                hidden
                                 accept="image/png, image/jpeg, image/webp"
                                 onChange={handleAvatarUpload}
                             />
-                            <button
-                                type="button"
-                                className="btn-text"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isSaving}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', height: '36px' }}
-                            >
-                                <Camera size={16} /> {t('account.change')}
+                            <button type="button" className="btn-text" onClick={() => fileInputRef.current?.click()} disabled={isSaving}>
+                                <Camera size={16} aria-hidden="true" /> {t('account.change')}
                             </button>
                             {currentAvatar && (
                                 <button
                                     type="button"
-                                    className="btn-text"
+                                    className="btn-text btn-text-danger"
                                     onClick={handleRemoveAvatar}
                                     disabled={isSaving}
                                     title={t('account.deletePhoto')}
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', height: '36px', color: 'var(--danger, #ef4444)' }}
                                 >
-                                    <Trash2 size={16} /> {t('account.delete')}
+                                    <Trash2 size={16} aria-hidden="true" /> {t('account.delete')}
                                 </button>
                             )}
                         </div>
                     </div>
 
-                    {/* Thème */}
                     <div className="setting-row">
                         <div className="setting-info">
-                            <label>{t('account.themeLabel')}</label>
-                            <span>{currentTheme === 'dark' ? t('account.themeDark') : t('account.themeLight')}</span>
+                            <label id="theme-label">{t('account.themeLabel')}</label>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button
-                                className={`btn-icon ${currentTheme === 'light' ? 'active' : ''}`}
-                                onClick={() => handleThemeChange('light')}
-                                title={t('theme.switchToLight')}
-                                style={{
-                                    border: currentTheme === 'light' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
-                                    padding: '0.4rem',
-                                    borderRadius: '6px'
-                                }}
-                            >
-                                <Sun size={18} />
-                            </button>
-                            <button
-                                className={`btn-icon ${currentTheme === 'dark' ? 'active' : ''}`}
-                                onClick={() => handleThemeChange('dark')}
-                                title={t('theme.switchToDark')}
-                                style={{
-                                    border: currentTheme === 'dark' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
-                                    padding: '0.4rem',
-                                    borderRadius: '6px'
-                                }}
-                            >
-                                <Moon size={18} />
-                            </button>
+                        <div className="choice-group" role="group" aria-labelledby="theme-label">
+                            {THEME_CHOICES.map(({ value, icon: Icon, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className="choice-btn"
+                                    aria-pressed={currentTheme === value}
+                                    onClick={() => handleThemeChange(value)}
+                                >
+                                    <Icon size={16} aria-hidden="true" /> {t(label)}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Langue de l'interface */}
                     <div className="setting-row">
                         <div className="setting-info">
-                            <label>{t('account.langLabel')}</label>
-                            <span>{locale === 'fr' ? 'Français' : 'English'}</span>
+                            <label id="lang-label">{t('account.langLabel')}</label>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <button
-                                type="button"
-                                className={`btn-text ${locale === 'fr' ? 'active' : ''}`}
-                                onClick={() => setLocale('fr')}
-                                style={{
-                                    border: locale === 'fr' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
-                                    padding: '0.4rem 0.75rem',
-                                    borderRadius: '6px',
-                                    fontWeight: locale === 'fr' ? 600 : 400,
-                                }}
-                            >
-                                {t('account.langFr')}
-                            </button>
-                            <button
-                                type="button"
-                                className={`btn-text ${locale === 'en' ? 'active' : ''}`}
-                                onClick={() => setLocale('en')}
-                                style={{
-                                    border: locale === 'en' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
-                                    padding: '0.4rem 0.75rem',
-                                    borderRadius: '6px',
-                                    fontWeight: locale === 'en' ? 600 : 400,
-                                }}
-                            >
-                                {t('account.langEn')}
-                            </button>
+                        <div className="choice-group" role="group" aria-labelledby="lang-label">
+                            {LANG_CHOICES.map(({ value, label }) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    className="choice-btn"
+                                    aria-pressed={locale === value}
+                                    onClick={() => setLocale(value)}
+                                >
+                                    {t(label)}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Email (Lecture seule) */}
                     <div className="setting-row">
                         <div className="setting-info">
                             <label>{t('account.email')}</label>
@@ -304,102 +303,97 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                         </div>
                     </div>
 
-                    {/* Pseudo */}
-                    <div className="setting-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div className="setting-info" style={{ flex: 1 }}>
-                            <label>{t('account.pseudo')}</label>
-                            {editingField !== 'name' && <span>{displayName}</span>}
-                            {editingField === 'name' && (
-                                <div style={{ marginTop: '0.25rem' }}>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={editName}
-                                        onChange={e => setEditName(e.target.value)}
-                                        autoFocus
-                                        placeholder={t('account.newPseudo')}
-                                        disabled={isSaving}
-                                    />
-                                </div>
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <label htmlFor="account-name">{t('account.pseudo')}</label>
+                            {editingField === 'name' ? (
+                                <input
+                                    id="account-name"
+                                    type="text"
+                                    className="form-control"
+                                    value={editName}
+                                    onChange={e => setEditName(e.target.value)}
+                                    autoFocus
+                                    placeholder={t('account.newPseudo')}
+                                    disabled={isSaving}
+                                />
+                            ) : (
+                                <span>{displayName}</span>
                             )}
                         </div>
-                        {editingField === 'name' ? (
-                            <div className="setting-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', height: 'fit-content' }}>
-                                <button
-                                    type="button"
-                                    className="btn-text"
-                                    onClick={() => setEditingField(null)}
-                                    disabled={isSaving}
-                                    style={{ display: 'inline-flex', alignItems: 'center', height: '36px', margin: 0 }}
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-primary-sm"
-                                    onClick={handleSaveName}
-                                    disabled={isSaving}
-                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', margin: 0 }}
-                                >
-                                    {isSaving ? t('common.saving') : t('common.save')}
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                className="btn-text"
-                                onClick={() => openEdit('name')}
-                                style={{ display: 'inline-flex', alignItems: 'center', height: '36px' }}
-                            >
-                                {t('common.edit')}
-                            </button>
-                        )}
+                        {editingField === 'name' ? editActions(handleSaveName) : editButton('name')}
                     </div>
 
-                    {/* Mot de passe */}
-                    <div className="setting-row" style={{ display: 'flex', alignItems: editingField === 'password' ? 'flex-start' : 'center', justifyContent: 'space-between' }}>
-                        <div className="setting-info" style={{ flex: 1 }}>
+                    <div className="setting-row">
+                        <div className="setting-info">
                             <label>{t('account.password')}</label>
-                            {editingField !== 'password' && <span>••••••••</span>}
-                            {editingField === 'password' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                    <input type="password" className="form-control" value={editPassCurrent} onChange={e => setEditPassCurrent(e.target.value)} placeholder={t('account.currentPassword')} autoFocus disabled={isSaving} />
-                                    <input type="password" className="form-control" value={editPassNew} onChange={e => setEditPassNew(e.target.value)} placeholder={t('account.newPassword')} disabled={isSaving} />
-                                    <small className="form-hint">{describePasswordPolicy(locale)}</small>
-                                    <input type="password" className="form-control" value={editPassConfirm} onChange={e => setEditPassConfirm(e.target.value)} placeholder={t('account.confirmNewPassword')} disabled={isSaving} />
+                            {editingField === 'password' ? (
+                                <div className="setting-fields">
+                                    <input type="password" className="form-control" aria-label={t('account.currentPassword')} value={editPassCurrent} onChange={e => setEditPassCurrent(e.target.value)} placeholder={t('account.currentPassword')} autoComplete="current-password" autoFocus disabled={isSaving} />
+                                    <input type="password" className="form-control" aria-label={t('account.newPassword')} aria-describedby="password-policy" value={editPassNew} onChange={e => setEditPassNew(e.target.value)} placeholder={t('account.newPassword')} autoComplete="new-password" disabled={isSaving} />
+                                    <small id="password-policy" className="form-hint">{describePasswordPolicy(locale)}</small>
+                                    <input type="password" className="form-control" aria-label={t('account.confirmNewPassword')} value={editPassConfirm} onChange={e => setEditPassConfirm(e.target.value)} placeholder={t('account.confirmNewPassword')} autoComplete="new-password" disabled={isSaving} />
                                 </div>
+                            ) : (
+                                <span aria-hidden="true">••••••••</span>
                             )}
                         </div>
-                        {editingField === 'password' ? (
-                            <div className="setting-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', alignSelf: 'flex-end', marginTop: 'auto' }}>
-                                <button
-                                    type="button"
-                                    className="btn-text"
-                                    onClick={() => setEditingField(null)}
-                                    disabled={isSaving}
-                                    style={{ display: 'inline-flex', alignItems: 'center', height: '36px', margin: 0 }}
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-primary-sm"
-                                    onClick={handleSavePassword}
-                                    disabled={isSaving}
-                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', margin: 0 }}
-                                >
-                                    {isSaving ? t('common.saving') : t('common.save')}
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                className="btn-text"
-                                onClick={() => openEdit('password')}
-                                style={{ display: 'inline-flex', alignItems: 'center', height: '36px' }}
+                        {editingField === 'password' ? editActions(handleSavePassword) : editButton('password')}
+                    </div>
+
+                    <div className="setting-row danger-zone">
+                        {confirmingDelete ? (
+                            <form
+                                className="danger-zone-form"
+                                onSubmit={(e) => {
+                                    e.preventDefault()
+                                    void handleDeleteAccount()
+                                }}
                             >
-                                {t('common.edit')}
-                            </button>
+                                <label htmlFor="delete-password">{t('account.deleteAccountConfirm')}</label>
+                                <input
+                                    id="delete-password"
+                                    type="password"
+                                    className="form-control"
+                                    value={deletePassword}
+                                    onChange={e => setDeletePassword(e.target.value)}
+                                    placeholder={t('account.currentPassword')}
+                                    autoComplete="current-password"
+                                    autoFocus
+                                    disabled={isSaving}
+                                />
+                                <div className="setting-actions">
+                                    <button
+                                        type="button"
+                                        className="btn-text"
+                                        onClick={() => setConfirmingDelete(false)}
+                                        disabled={isSaving}
+                                    >
+                                        {t('common.cancel')}
+                                    </button>
+                                    <button type="submit" className="btn-danger" disabled={isSaving || !deletePassword}>
+                                        <Trash2 size={16} aria-hidden="true" /> {t('account.deleteAccountFinal')}
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
+                            <>
+                                <div className="setting-info">
+                                    <label>{t('account.deleteAccount')}</label>
+                                    <span>{t('account.deleteAccountHint')}</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn-danger"
+                                    onClick={() => {
+                                        setEditError('')
+                                        setDeletePassword('')
+                                        setConfirmingDelete(true)
+                                    }}
+                                >
+                                    <Trash2 size={16} aria-hidden="true" /> {t('account.deleteAccount')}
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

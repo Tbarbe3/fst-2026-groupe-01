@@ -1,4 +1,5 @@
 import type { DiffLine } from '../components/DiffViewer'
+import { getCurrentLocale, translate } from '@/i18n'
 
 export interface DiffFile {
   path: string
@@ -96,32 +97,44 @@ export class ApiError extends Error {
   }
 }
 
+const API_ERROR_KEYS: Record<string, string> = {
+  UNAUTHORIZED: 'apiErrors.unauthorized',
+  MISSING_PARAMS: 'apiErrors.missingParams',
+  ATTEMPT_NOT_FOUND: 'apiErrors.attemptNotFound',
+  ALREADY_SUBMITTED: 'apiErrors.alreadySubmitted',
+  INVALID_COMMENT: 'apiErrors.invalidComment',
+}
+
+/** Traduit le `code` de l'API ; un 5xx reste générique pour ne rien divulguer. */
+function describeApiError(status: number, body: { code?: string; message?: string } | null): string {
+  const locale = getCurrentLocale()
+  if (status === 429) return translate(locale, 'apiErrors.rateLimited')
+  if (status >= 500) return translate(locale, 'errors.server')
+  const key = body?.code && API_ERROR_KEYS[body.code]
+  return key ? translate(locale, key) : (body?.message ?? translate(locale, 'errors.server'))
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     ...init,
     headers: init?.body ? { 'content-type': 'application/json' } : undefined,
   })
-  const body = (await response.json().catch(() => null)) as { message?: string } | null
-  if (!response.ok) {
-    // Les messages 4xx de l'API sont rédigés pour l'utilisateur ; un 5xx
-    // reste générique pour ne rien divulguer.
-    const message =
-      response.status < 500 && body?.message
-        ? body.message
-        : 'Le serveur a rencontré une erreur. Réessayez dans un instant.'
-    throw new ApiError(message, response.status)
-  }
+  const body = (await response.json().catch(() => null)) as { code?: string; message?: string } | null
+  if (!response.ok) throw new ApiError(describeApiError(response.status, body), response.status)
   return body as T
 }
 
 export const challengesApi = {
   create: (body: ChallengeRequest) =>
-    request<{ attemptId: string }>('/challenges', { method: 'POST', body: JSON.stringify(body) }),
+    request<{ attemptId: string }>('/challenges', {
+      method: 'POST',
+      body: JSON.stringify({ ...body, locale: getCurrentLocale() }),
+    }),
   get: (attemptId: string) => request<Attempt>(`/attempts/${encodeURIComponent(attemptId)}`),
   submit: (attemptId: string, comments: ReviewComment[]) =>
     request<{ attemptId: string; score: number }>(
       `/attempts/${encodeURIComponent(attemptId)}/submit`,
-      { method: 'POST', body: JSON.stringify({ comments }) },
+      { method: 'POST', body: JSON.stringify({ comments, locale: getCurrentLocale() }) },
     ),
   history: () => request<{ attempts: AttemptSummary[] }>('/me/attempts'),
 }

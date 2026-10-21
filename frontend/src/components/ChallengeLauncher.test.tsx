@@ -32,10 +32,10 @@ describe('ChallengeLauncher', () => {
     const user = userEvent.setup()
     renderLauncher()
 
-    await user.selectOptions(screen.getByLabelText('Difficulté'), 'senior')
+    await user.selectOptions(screen.getByLabelText('Difficulté'), '5')
     await user.click(screen.getByRole('button', { name: /Lancer le challenge/ }))
 
-    expect(create).toHaveBeenCalledWith(expect.objectContaining({ difficulty: 'senior' }))
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ difficulty: '5' }))
     expect(await screen.findByText('Page Review')).toBeInTheDocument()
   })
 

@@ -6,12 +6,12 @@ import { challengesApi, type AttemptSubmitted, type GroundTruthItem } from '../a
 import DiffViewer, { type DiffLine } from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
-import { describeNetworkError } from '../errors/network-error'
-import { useI18n } from '../i18n'
+import { describeError } from '../errors/network-error'
+import { useI18n } from '@/i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,
-  getLanguageLabels,
+  LANGUAGE_LABELS,
   getSeverityLabels,
   label,
 } from '../labels'
@@ -32,6 +32,7 @@ function fixLines(attempt: AttemptSubmitted, issue: GroundTruthItem): DiffLine[]
 }
 
 function Meter({ name, value, max }: { name: string; value: number; max: number }) {
+  const { t } = useI18n()
   return (
     <div className="result-meter">
       <div className="result-meter-head">
@@ -40,7 +41,7 @@ function Meter({ name, value, max }: { name: string; value: number; max: number 
           {value} / {max}
         </span>
       </div>
-      <progress value={value} max={max} aria-label={`${name} : ${value} sur ${max}`} />
+      <progress value={value} max={max} aria-label={t('result.meterAria', { name, value, max })} />
     </div>
   )
 }
@@ -54,7 +55,6 @@ export default function ReviewResult() {
 
   const categoryLabels = getCategoryLabels(locale)
   const difficultyLabels = getDifficultyLabels(locale)
-  const languageLabels = getLanguageLabels()
   const severityLabels = getSeverityLabels(locale)
 
   useEffect(() => {
@@ -68,10 +68,7 @@ export default function ReviewResult() {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(
-          describeNetworkError(err, locale) ??
-            (err instanceof Error ? err.message : t('result.loadError')),
-        )
+        setError(describeError(err, t('result.loadError'), locale))
       })
     return () => {
       cancelled = true
@@ -114,7 +111,7 @@ export default function ReviewResult() {
               {scenario.title}
             </h1>
             <div className="pr-tags">
-              <span className="pr-category-tag">{label(languageLabels, scenario.language, locale)}</span>
+              <span className="pr-category-tag">{label(LANGUAGE_LABELS, scenario.language, locale)}</span>
               <span className="pr-category-tag">{label(difficultyLabels, scenario.difficulty, locale)}</span>
               <span className="pr-category-tag">{label(categoryLabels, scenario.category, locale)}</span>
             </div>

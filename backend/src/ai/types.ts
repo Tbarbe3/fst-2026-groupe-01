@@ -1,5 +1,6 @@
 export const LANGUAGES = ['typescript', 'python', 'go', 'java', 'php', 'rust', 'csharp'] as const
-export const DIFFICULTIES = ['junior', 'intermediate', 'senior'] as const
+// Niveaux 1 (syntaxe) à 5 (subtil), stockés en SMALLINT par PostgreSQL.
+export const DIFFICULTIES = ['1', '2', '3', '4', '5'] as const
 // Doit rester aligné sur le type PostgreSQL `error_category_type`.
 export const CATEGORIES = [
   'security_owasp',
@@ -10,6 +11,10 @@ export const CATEGORIES = [
 ] as const
 export const SEVERITIES = ['critical', 'major', 'minor'] as const
 
+// Langue de rédaction des textes destinés au joueur, celle de l'interface.
+export const LOCALES = ['fr', 'en'] as const
+
+export type Locale = (typeof LOCALES)[number]
 export type Language = (typeof LANGUAGES)[number]
 export type Difficulty = (typeof DIFFICULTIES)[number]
 export type Category = (typeof CATEGORIES)[number]
@@ -19,6 +24,7 @@ export interface GenerationParams {
   language: Language
   difficulty: Difficulty
   category: Category
+  locale: Locale
 }
 
 /**

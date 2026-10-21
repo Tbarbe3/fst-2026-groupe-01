@@ -16,4 +16,10 @@ describe('validatePassword', () => {
       'Le mot de passe doit contenir au moins une majuscule, un chiffre et un symbole.',
     )
   })
+
+  it('liste les règles manquantes en anglais', () => {
+    expect(validatePassword('MOTDEPASSE1', 'en')).toBe(
+      'Password must contain at least one lowercase letter and one symbol.',
+    )
+  })
 })

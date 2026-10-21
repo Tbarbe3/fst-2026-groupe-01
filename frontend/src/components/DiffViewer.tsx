@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from 'react'
 import { FileCode2, MessageSquarePlus } from 'lucide-react'
 
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 
 export interface DiffLine {
   type: 'context' | 'add' | 'delete' | 'hunk'
@@ -78,27 +78,31 @@ export default function DiffViewer({
 
           return (
             <Fragment key={idx}>
+              {/* Clic souris sur toute la ligne ; le bouton reste la cible clavier. */}
               <div
                 className={`diff-row row-${line.type}${line.isVulnerable ? ' is-vulnerable-row' : ''}${
                   commented ? ' is-commented-row' : ''
-                }`}
+                }${commentable ? ' is-commentable-row' : ''}`}
+                onClick={commentable ? () => onCommentLine(line) : undefined}
               >
-                <div className="line-num line-num-old">{line.oldLineNumber ?? ''}</div>
-                <div className="line-num line-num-new">
-                  {commentable ? (
+                {onCommentLine && <div className="line-comment-slot">
+                  {commentable && (
                     <button
                       type="button"
                       className="line-comment-btn"
-                      onClick={() => onCommentLine(line)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onCommentLine(line)
+                      }}
                       aria-label={t('diff.commentAria', { line: line.newLineNumber!, file: filename })}
+                      title={t('diff.commentTitle')}
                     >
-                      <span className="line-comment-num">{line.newLineNumber}</span>
-                      <MessageSquarePlus size={14} className="line-comment-icon" aria-hidden="true" />
+                      <MessageSquarePlus size={14} aria-hidden="true" />
                     </button>
-                  ) : (
-                    (line.newLineNumber ?? '')
                   )}
-                </div>
+                </div>}
+                <div className="line-num line-num-old">{line.oldLineNumber ?? ''}</div>
+                <div className="line-num line-num-new">{line.newLineNumber ?? ''}</div>
                 <div className="line-marker" aria-hidden="true">
                   {symbol}
                 </div>

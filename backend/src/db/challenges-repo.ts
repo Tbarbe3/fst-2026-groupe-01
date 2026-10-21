@@ -65,11 +65,11 @@ export function createChallengesRepo(pool: pg.Pool): ChallengesRepo {
     async findUnplayedScenario(userId, params) {
       const { rows } = await pool.query<{ id: string }>(
         `SELECT s.id FROM scenarios s
-          WHERE s.language = $1 AND s.difficulty = $2 AND s.error_category = $3
+          WHERE s.language = $1 AND s.difficulty = $2 AND s.error_category = $3 AND s.locale = $5
             AND NOT EXISTS (
               SELECT 1 FROM review_attempts a WHERE a.scenario_id = s.id AND a.user_id = $4)
           ORDER BY random() LIMIT 1`,
-        [params.language, params.difficulty, params.category, userId],
+        [params.language, params.difficulty, params.category, userId, params.locale],
       )
       return rows[0]?.id ?? null
     },
@@ -77,8 +77,8 @@ export function createChallengesRepo(pool: pg.Pool): ChallengesRepo {
     async insertScenario(userId, { scenario, params, source, model }) {
       const { rows } = await pool.query<{ id: string }>(
         `INSERT INTO scenarios (created_by_user_id, title, ticket_context, language, difficulty,
-                                error_category, persona, diff_content, ground_truth, source, model)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+                                error_category, persona, diff_content, ground_truth, source, model, locale)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
         [
           userId,
           scenario.title.slice(0, 255),
@@ -91,6 +91,7 @@ export function createChallengesRepo(pool: pg.Pool): ChallengesRepo {
           JSON.stringify(scenario.groundTruth),
           source,
           model,
+          params.locale,
         ],
       )
       return rows[0]!.id

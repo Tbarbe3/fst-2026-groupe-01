@@ -1,25 +1,22 @@
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { Code2 } from 'lucide-react'
 
 import { authClient } from '../auth'
+import { useLogout } from '../hooks/useLogout'
 import { handleSectionClick, useSectionHref } from '../hooks/useSectionHref'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
+
+const SECTIONS = [
+  { hash: '#demo', key: 'footer.codeDemo' },
+  { hash: '#languages', key: 'footer.supportedLanguages' },
+  { hash: '#workflow', key: 'footer.methodWorkflow' },
+] as const
 
 export default function SiteFooter() {
-  const navigate = useNavigate()
   const { pathname } = useLocation()
   const { t } = useI18n()
   const { data: session } = authClient.useSession()
-  const isAuthenticated = Boolean(session?.user)
-
-  const handleLogout = async () => {
-    try {
-      await authClient.signOut()
-    } catch {
-      // Ignoré si échec réseau
-    }
-    await navigate('/', { replace: true })
-  }
+  const logout = useLogout()
   const sectionHref = useSectionHref()
 
   return (
@@ -38,50 +35,26 @@ export default function SiteFooter() {
         <div className="footer-links-col">
           <div className="footer-links-title">{t('footer.platform')}</div>
           <ul className="footer-links-list">
-            <li>
-              <Link
-                to={sectionHref('#demo')}
-                onClick={handleSectionClick('#demo', pathname)}
-              >
-                {t('footer.codeDemo')}
-              </Link>
-            </li>
-            <li>
-              <Link
-                to={sectionHref('#languages')}
-                onClick={handleSectionClick('#languages', pathname)}
-              >
-                {t('footer.supportedLanguages')}
-              </Link>
-            </li>
-            <li>
-              <Link
-                to={sectionHref('#workflow')}
-                onClick={handleSectionClick('#workflow', pathname)}
-              >
-                {t('footer.methodWorkflow')}
-              </Link>
-            </li>
-            <li>
-              <Link to="/dashboard">{t('footer.dashboard')}</Link>
-            </li>
+            {SECTIONS.map(({ hash, key }) => (
+              <li key={hash}>
+                <Link to={sectionHref(hash)} onClick={handleSectionClick(hash, pathname)}>
+                  {t(key)}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
         <div className="footer-links-col">
           <div className="footer-links-title">{t('footer.accountAccess')}</div>
           <ul className="footer-links-list">
-            {isAuthenticated ? (
+            {session?.user ? (
               <>
                 <li>
-                  <Link to="/dashboard">{t('footer.myProfile')}</Link>
+                  <Link to="/dashboard">{t('footer.dashboard')}</Link>
                 </li>
                 <li>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="footer-btn-link"
-                  >
+                  <button type="button" onClick={() => void logout()} className="footer-btn-link">
                     {t('footer.logout')}
                   </button>
                 </li>
@@ -93,9 +66,6 @@ export default function SiteFooter() {
                 </li>
                 <li>
                   <Link to="/register">{t('footer.register')}</Link>
-                </li>
-                <li>
-                  <Link to="/dashboard">{t('footer.dashboardReq')}</Link>
                 </li>
               </>
             )}

@@ -1,7 +1,9 @@
+import { MESSAGES } from './messages.js'
 import type {
   CommentVerdict,
   GroundTruthItem,
   JudgeResult,
+  Locale,
   Severity,
   SubmittedComment,
 } from './types.js'
@@ -10,9 +12,6 @@ import type {
 export const LINE_TOLERANCE = 2
 
 const SEVERITY_WEIGHT: Record<Severity, number> = { critical: 3, major: 2, minor: 1 }
-
-export const HEURISTIC_SUMMARY =
-  'Analyse sémantique temporairement indisponible, résultat calculé d’après les lignes pointées.'
 
 export interface ScoreBreakdown {
   found: number
@@ -51,6 +50,7 @@ export function sanitizeJudgeOutput(
   raw: unknown,
   comments: SubmittedComment[],
   groundTruth: GroundTruthItem[],
+  locale: Locale,
 ): JudgeResult {
   const record = (typeof raw === 'object' && raw !== null ? raw : {}) as {
     summary?: unknown
@@ -72,7 +72,7 @@ export function sanitizeJudgeOutput(
       feedback:
         typeof raw?.feedback === 'string' && raw.feedback.trim()
           ? raw.feedback.trim()
-          : 'Aucun retour détaillé pour ce commentaire.',
+          : MESSAGES[locale].noFeedback,
     }
   })
 
@@ -80,17 +80,20 @@ export function sanitizeJudgeOutput(
 }
 
 /** Juge sans LLM : la ligne seule fait foi, la clarté est forfaitaire. */
-export function heuristicJudge(comments: SubmittedComment[], groundTruth: GroundTruthItem[]): JudgeResult {
+export function heuristicJudge(
+  comments: SubmittedComment[],
+  groundTruth: GroundTruthItem[],
+  locale: Locale,
+): JudgeResult {
+  const messages = MESSAGES[locale]
   return {
-    summary: HEURISTIC_SUMMARY,
+    summary: messages.heuristicSummary,
     verdicts: comments.map((comment) => {
       const [matched = null] = candidateIssues(comment, groundTruth)
       return {
         matched_issue_id: matched,
         clarity_score: matched ? 50 : 0,
-        feedback: matched
-          ? 'Ligne correcte. La qualité de l’explication n’a pas pu être évaluée.'
-          : 'Aucune anomalie attendue à cet endroit.',
+        feedback: matched ? messages.heuristicMatched : messages.heuristicMissed,
       }
     }),
   }
