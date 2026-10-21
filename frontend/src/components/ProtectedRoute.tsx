@@ -1,8 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 
 import { authClient } from '../auth'
+import { useI18n } from '../i18n'
 
 export default function ProtectedRoute() {
+  const { t } = useI18n()
   const location = useLocation()
   const { data: session } = authClient.useSession()
 
@@ -27,21 +29,15 @@ export default function ProtectedRoute() {
 
   if (!session.user) {
     return (
-        <div className="auth-container">
-          <div className="auth-card dashboard">
-            <h2>Session invalide</h2>
-            <p>
-              Votre session est reconnue mais incomplète. Déconnectez-vous puis
-              reconnectez-vous.
-            </p>
-            <button
-                className="btn btn-logout"
-                onClick={handleForceLogout}
-            >
-              Se déconnecter
-            </button>
-          </div>
+      <div className="auth-container">
+        <div className="auth-card dashboard">
+          <h2>{t('protected.invalidSession')}</h2>
+          <p>{t('protected.incompleteDesc')}</p>
+          <button className="btn btn-logout" onClick={handleForceLogout}>
+            {t('protected.logout')}
+          </button>
         </div>
+      </div>
     )
   }
 

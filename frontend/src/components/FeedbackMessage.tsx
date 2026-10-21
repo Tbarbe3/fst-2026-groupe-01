@@ -1,3 +1,5 @@
+import { useI18n } from '../i18n'
+
 interface FeedbackMessageProps {
   kind: 'error' | 'success' | 'info'
   children: React.ReactNode
@@ -11,8 +13,13 @@ export default function FeedbackMessage({
   kind,
   children,
 }: FeedbackMessageProps) {
+  const { t } = useI18n()
   const isError = kind === 'error'
-  const prefix = { error: 'Erreur', success: 'Succès', info: 'Information' }[kind]
+  const prefix = {
+    error: t('common.error'),
+    success: t('common.success'),
+    info: t('common.info'),
+  }[kind]
 
   return (
     <p

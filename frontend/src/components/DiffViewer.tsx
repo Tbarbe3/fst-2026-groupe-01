@@ -1,6 +1,8 @@
 import { Fragment, type ReactNode } from 'react'
 import { FileCode2, MessageSquarePlus } from 'lucide-react'
 
+import { useI18n } from '../i18n'
+
 export interface DiffLine {
   type: 'context' | 'add' | 'delete' | 'hunk'
   code: string
@@ -19,13 +21,11 @@ interface DiffViewerProps {
   children?: ReactNode
 }
 
-// Le + / − et le libellé masqué doublent la couleur de fond, seule
-// indication sinon du sens de la ligne.
-const MARKERS: Record<DiffLine['type'], { symbol: string; label: string }> = {
-  add: { symbol: '+', label: 'Ligne ajoutée' },
-  delete: { symbol: '−', label: 'Ligne supprimée' },
-  context: { symbol: ' ', label: 'Ligne inchangée' },
-  hunk: { symbol: ' ', label: 'Bloc' },
+const MARKER_SYMBOLS: Record<DiffLine['type'], string> = {
+  add: '+',
+  delete: '−',
+  context: ' ',
+  hunk: ' ',
 }
 
 export default function DiffViewer({
@@ -36,8 +36,16 @@ export default function DiffViewer({
   renderAfterLine,
   children,
 }: DiffViewerProps) {
+  const { t } = useI18n()
   const added = lines.filter((l) => l.type === 'add').length
   const deleted = lines.filter((l) => l.type === 'delete').length
+
+  const markerLabels: Record<DiffLine['type'], string> = {
+    add: t('diff.added'),
+    delete: t('diff.deleted'),
+    context: t('diff.unchanged'),
+    hunk: t('diff.hunk'),
+  }
 
   return (
     <div className="diff-viewer">
@@ -63,7 +71,8 @@ export default function DiffViewer({
               </div>
             )
           }
-          const marker = MARKERS[line.type]
+          const symbol = MARKER_SYMBOLS[line.type]
+          const label = markerLabels[line.type]
           const commentable = onCommentLine && line.newLineNumber !== undefined
           const commented = line.newLineNumber !== undefined && commentedLines?.has(line.newLineNumber)
 
@@ -81,7 +90,7 @@ export default function DiffViewer({
                       type="button"
                       className="line-comment-btn"
                       onClick={() => onCommentLine(line)}
-                      aria-label={`Commenter la ligne ${line.newLineNumber} de ${filename}`}
+                      aria-label={t('diff.commentAria', { line: line.newLineNumber!, file: filename })}
                     >
                       <span className="line-comment-num">{line.newLineNumber}</span>
                       <MessageSquarePlus size={14} className="line-comment-icon" aria-hidden="true" />
@@ -91,10 +100,10 @@ export default function DiffViewer({
                   )}
                 </div>
                 <div className="line-marker" aria-hidden="true">
-                  {marker.symbol}
+                  {symbol}
                 </div>
                 <div className="line-code">
-                  <span className="visually-hidden">{marker.label} : </span>
+                  <span className="visually-hidden">{label} : </span>
                   <code>{line.code}</code>
                 </div>
               </div>

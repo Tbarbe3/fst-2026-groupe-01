@@ -6,11 +6,13 @@ import { authClient } from '../auth'
 import { translateAccountError } from '../errors/dashboard-errors'
 import { describeNetworkError } from '../errors/network-error'
 import { describePasswordPolicy, validatePassword } from '../errors/password-policy'
+import { useI18n } from '../i18n'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 import FeedbackMessage from './FeedbackMessage'
 
 /** Paramètres du compte, ouverts depuis la barre de navigation. */
 export default function AccountModal({ onClose }: { onClose: () => void }) {
+    const { locale, setLocale, t } = useI18n()
     const { data: session } = authClient.useSession()
     const [currentTheme, setCurrentTheme] = useState<Theme>(readStoredTheme)
 
@@ -38,7 +40,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 
     const handleSaveName = async () => {
         if (!editName.trim()) {
-            setEditError("Le pseudo ne peut pas être vide.")
+            setEditError(t('account.nameEmpty'))
             return
         }
         setIsSaving(true)
@@ -46,10 +48,10 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 
         try {
             const { error } = await authClient.updateUser({ name: editName })
-            if (error) setEditError(translateAccountError(error))
+            if (error) setEditError(translateAccountError(error, locale))
             else setEditingField(null)
         } catch (err: unknown) {
-            setEditError(describeNetworkError(err) ?? 'Une erreur est survenue. Réessayez.')
+            setEditError(describeNetworkError(err, locale) ?? t('common.genericError'))
         } finally {
             setIsSaving(false)
         }
@@ -57,14 +59,14 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 
     const handleSavePassword = async () => {
         if (!editPassCurrent || !editPassNew || !editPassConfirm) {
-            setEditError("Veuillez remplir tous les champs.")
+            setEditError(t('account.fillAllFields'))
             return
         }
         if (editPassNew !== editPassConfirm) {
-            setEditError("Les nouveaux mots de passe ne correspondent pas.")
+            setEditError(t('account.passwordsMismatch'))
             return
         }
-        const policyError = validatePassword(editPassNew)
+        const policyError = validatePassword(editPassNew, locale)
         if (policyError) {
             setEditError(policyError)
             return
@@ -78,10 +80,10 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                 currentPassword: editPassCurrent,
                 revokeOtherSessions: true,
             })
-            if (error) setEditError(translateAccountError(error))
+            if (error) setEditError(translateAccountError(error, locale))
             else setEditingField(null)
         } catch (err: unknown) {
-            setEditError(describeNetworkError(err) ?? 'Une erreur est survenue. Réessayez.')
+            setEditError(describeNetworkError(err, locale) ?? t('common.genericError'))
         } finally {
             setIsSaving(false)
         }
@@ -99,7 +101,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         if (!file) return
 
         if (file.size > 2 * 1024 * 1024) {
-            setEditError("L'image ne doit pas dépasser 2 Mo.")
+            setEditError(t('account.fileTooLarge'))
             return
         }
 
@@ -122,12 +124,12 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
             try {
                 const { error } = await authClient.updateUser({ image: compressedBase64 })
                 if (error) {
-                    setEditError(translateAccountError(error))
+                    setEditError(translateAccountError(error, locale))
                 } else {
                     setAvatarUrl(compressedBase64)
                 }
             } catch (err: unknown) {
-                setEditError(describeNetworkError(err) ?? 'Erreur lors de la mise à jour de la photo.')
+                setEditError(describeNetworkError(err, locale) ?? t('account.avatarUpdateError'))
             } finally {
                 setIsSaving(false)
             }
@@ -140,13 +142,13 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         try {
             const { error } = await authClient.updateUser({ image: '' })
             if (error) {
-                setEditError(translateAccountError(error))
+                setEditError(translateAccountError(error, locale))
             } else {
                 setAvatarUrl(undefined)
                 if (fileInputRef.current) fileInputRef.current.value = ''
             }
         } catch (err: unknown) {
-            setEditError(describeNetworkError(err) ?? 'Erreur lors de la suppression.')
+            setEditError(describeNetworkError(err, locale) ?? t('account.avatarRemoveError'))
         } finally {
             setIsSaving(false)
         }
@@ -156,8 +158,8 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>Paramètres du Compte</h3>
-                    <button className="btn-close" onClick={onClose} aria-label="Fermer">
+                    <h3>{t('account.title')}</h3>
+                    <button className="btn-close" onClick={onClose} aria-label={t('common.close')}>
                         <X size={18} />
                     </button>
                 </div>
@@ -187,8 +189,8 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                 )}
                             </div>
                             <div style={{ textAlign: 'center' }}>
-                                <label style={{ display: 'block', margin: 0 }}>Photo de profil</label>
-                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>PNG ou JPG max 2 Mo</span>
+                                <label style={{ display: 'block', margin: 0 }}>{t('account.avatar')}</label>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('account.avatarHint')}</span>
                             </div>
                         </div>
 
@@ -207,7 +209,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                 disabled={isSaving}
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', height: '36px' }}
                             >
-                                <Camera size={16} /> Changer
+                                <Camera size={16} /> {t('account.change')}
                             </button>
                             {currentAvatar && (
                                 <button
@@ -215,10 +217,10 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                     className="btn-text"
                                     onClick={handleRemoveAvatar}
                                     disabled={isSaving}
-                                    title="Supprimer la photo"
+                                    title={t('account.deletePhoto')}
                                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', height: '36px', color: 'var(--danger, #ef4444)' }}
                                 >
-                                    <Trash2 size={16} /> Supprimer
+                                    <Trash2 size={16} /> {t('account.delete')}
                                 </button>
                             )}
                         </div>
@@ -227,14 +229,14 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                     {/* Thème */}
                     <div className="setting-row">
                         <div className="setting-info">
-                            <label>Thème de l'interface</label>
-                            <span>{currentTheme === 'dark' ? 'Sombre' : 'Clair'}</span>
+                            <label>{t('account.themeLabel')}</label>
+                            <span>{currentTheme === 'dark' ? t('account.themeDark') : t('account.themeLight')}</span>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <button
                                 className={`btn-icon ${currentTheme === 'light' ? 'active' : ''}`}
                                 onClick={() => handleThemeChange('light')}
-                                title="Thème clair"
+                                title={t('theme.switchToLight')}
                                 style={{
                                     border: currentTheme === 'light' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
                                     padding: '0.4rem',
@@ -246,7 +248,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                             <button
                                 className={`btn-icon ${currentTheme === 'dark' ? 'active' : ''}`}
                                 onClick={() => handleThemeChange('dark')}
-                                title="Thème sombre"
+                                title={t('theme.switchToDark')}
                                 style={{
                                     border: currentTheme === 'dark' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
                                     padding: '0.4rem',
@@ -258,10 +260,46 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                         </div>
                     </div>
 
+                    {/* Langue de l'interface */}
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <label>{t('account.langLabel')}</label>
+                            <span>{locale === 'fr' ? 'Français' : 'English'}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button
+                                type="button"
+                                className={`btn-text ${locale === 'fr' ? 'active' : ''}`}
+                                onClick={() => setLocale('fr')}
+                                style={{
+                                    border: locale === 'fr' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
+                                    padding: '0.4rem 0.75rem',
+                                    borderRadius: '6px',
+                                    fontWeight: locale === 'fr' ? 600 : 400,
+                                }}
+                            >
+                                {t('account.langFr')}
+                            </button>
+                            <button
+                                type="button"
+                                className={`btn-text ${locale === 'en' ? 'active' : ''}`}
+                                onClick={() => setLocale('en')}
+                                style={{
+                                    border: locale === 'en' ? '2px solid var(--primary, #3b82f6)' : '1px solid var(--border)',
+                                    padding: '0.4rem 0.75rem',
+                                    borderRadius: '6px',
+                                    fontWeight: locale === 'en' ? 600 : 400,
+                                }}
+                            >
+                                {t('account.langEn')}
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Email (Lecture seule) */}
                     <div className="setting-row">
                         <div className="setting-info">
-                            <label>Email</label>
+                            <label>{t('account.email')}</label>
                             <span>{session?.user?.email}</span>
                         </div>
                     </div>
@@ -269,7 +307,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                     {/* Pseudo */}
                     <div className="setting-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div className="setting-info" style={{ flex: 1 }}>
-                            <label>Pseudo</label>
+                            <label>{t('account.pseudo')}</label>
                             {editingField !== 'name' && <span>{displayName}</span>}
                             {editingField === 'name' && (
                                 <div style={{ marginTop: '0.25rem' }}>
@@ -279,7 +317,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                         value={editName}
                                         onChange={e => setEditName(e.target.value)}
                                         autoFocus
-                                        placeholder="Nouveau pseudo"
+                                        placeholder={t('account.newPseudo')}
                                         disabled={isSaving}
                                     />
                                 </div>
@@ -294,7 +332,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                     disabled={isSaving}
                                     style={{ display: 'inline-flex', alignItems: 'center', height: '36px', margin: 0 }}
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="button"
@@ -303,7 +341,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                     disabled={isSaving}
                                     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', margin: 0 }}
                                 >
-                                    {isSaving ? 'En cours...' : 'Enregistrer'}
+                                    {isSaving ? t('common.saving') : t('common.save')}
                                 </button>
                             </div>
                         ) : (
@@ -313,7 +351,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                 onClick={() => openEdit('name')}
                                 style={{ display: 'inline-flex', alignItems: 'center', height: '36px' }}
                             >
-                                Modifier
+                                {t('common.edit')}
                             </button>
                         )}
                     </div>
@@ -321,14 +359,14 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                     {/* Mot de passe */}
                     <div className="setting-row" style={{ display: 'flex', alignItems: editingField === 'password' ? 'flex-start' : 'center', justifyContent: 'space-between' }}>
                         <div className="setting-info" style={{ flex: 1 }}>
-                            <label>Mot de passe</label>
+                            <label>{t('account.password')}</label>
                             {editingField !== 'password' && <span>••••••••</span>}
                             {editingField === 'password' && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                    <input type="password" className="form-control" value={editPassCurrent} onChange={e => setEditPassCurrent(e.target.value)} placeholder="Mot de passe actuel" autoFocus disabled={isSaving} />
-                                    <input type="password" className="form-control" value={editPassNew} onChange={e => setEditPassNew(e.target.value)} placeholder="Nouveau mot de passe" disabled={isSaving} />
-                                    <small className="form-hint">{describePasswordPolicy()}</small>
-                                    <input type="password" className="form-control" value={editPassConfirm} onChange={e => setEditPassConfirm(e.target.value)} placeholder="Confirmer le nouveau mot de passe" disabled={isSaving} />
+                                    <input type="password" className="form-control" value={editPassCurrent} onChange={e => setEditPassCurrent(e.target.value)} placeholder={t('account.currentPassword')} autoFocus disabled={isSaving} />
+                                    <input type="password" className="form-control" value={editPassNew} onChange={e => setEditPassNew(e.target.value)} placeholder={t('account.newPassword')} disabled={isSaving} />
+                                    <small className="form-hint">{describePasswordPolicy(locale)}</small>
+                                    <input type="password" className="form-control" value={editPassConfirm} onChange={e => setEditPassConfirm(e.target.value)} placeholder={t('account.confirmNewPassword')} disabled={isSaving} />
                                 </div>
                             )}
                         </div>
@@ -341,7 +379,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                     disabled={isSaving}
                                     style={{ display: 'inline-flex', alignItems: 'center', height: '36px', margin: 0 }}
                                 >
-                                    Annuler
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     type="button"
@@ -350,7 +388,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                     disabled={isSaving}
                                     style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: '36px', margin: 0 }}
                                 >
-                                    {isSaving ? 'En cours...' : 'Enregistrer'}
+                                    {isSaving ? t('common.saving') : t('common.save')}
                                 </button>
                             </div>
                         ) : (
@@ -360,7 +398,7 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
                                 onClick={() => openEdit('password')}
                                 style={{ display: 'inline-flex', alignItems: 'center', height: '36px' }}
                             >
-                                Modifier
+                                {t('common.edit')}
                             </button>
                         )}
                     </div>

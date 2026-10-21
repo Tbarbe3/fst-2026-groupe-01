@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { authClientMock, sessionAbsent, sessionActive } from '@/tests/session.ts'
 import SiteLayout from '@/components/SiteLayout.tsx'
+import { I18nProvider } from '@/i18n'
 import Home from '../Home.tsx'
 
 vi.mock('../../auth', () => ({ authClient: authClientMock }))
@@ -20,12 +21,18 @@ function renderHome() {
     ],
     { initialEntries: ['/'] },
   )
-  return render(<RouterProvider router={router} />)
+  return render(
+    <I18nProvider>
+      <RouterProvider router={router} />
+    </I18nProvider>,
+  )
 }
 
 describe('Home Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
+    document.documentElement.removeAttribute('lang')
     sessionAbsent()
   })
 
@@ -82,6 +89,21 @@ describe('Home Page', () => {
       await user.click(solutionBtn)
 
       expect(screen.getByText(/Échappement natif/i)).toBeInTheDocument()
+    })
+
+    it('permet de basculer toute la page en anglais via le bouton du header', async () => {
+      const user = userEvent.setup()
+      renderHome()
+
+      const switchBtn = screen.getByRole('button', { name: 'Passer en anglais' })
+      await user.click(switchBtn)
+
+      expect(
+        screen.getByRole('heading', { level: 1, name: /Master code review/i }),
+      ).toBeInTheDocument()
+      expect(screen.getAllByText('Code Demo').length).toBeGreaterThan(0)
+      expect(screen.getAllByRole('link', { name: /Sign in/i }).length).toBeGreaterThan(0)
+      expect(screen.getByText(/Direct injection of user input/i)).toBeInTheDocument()
     })
   })
 

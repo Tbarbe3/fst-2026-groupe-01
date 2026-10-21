@@ -7,7 +7,14 @@ import DiffViewer, { type DiffLine } from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, LANGUAGE_LABELS, SEVERITY_LABELS, label } from '../labels'
+import { useI18n } from '../i18n'
+import {
+  getCategoryLabels,
+  getDifficultyLabels,
+  getLanguageLabels,
+  getSeverityLabels,
+  label,
+} from '../labels'
 
 /** Lignes fautives du diff suivies de leur correction attendue. */
 function fixLines(attempt: AttemptSubmitted, issue: GroundTruthItem): DiffLine[] {
@@ -39,10 +46,16 @@ function Meter({ name, value, max }: { name: string; value: number; max: number 
 }
 
 export default function ReviewResult() {
+  const { locale, t } = useI18n()
   const { challengeId = '' } = useParams()
   const [attempt, setAttempt] = useState<AttemptSubmitted | null>(null)
   const [notSubmitted, setNotSubmitted] = useState(false)
   const [error, setError] = useState('')
+
+  const categoryLabels = getCategoryLabels(locale)
+  const difficultyLabels = getDifficultyLabels(locale)
+  const languageLabels = getLanguageLabels()
+  const severityLabels = getSeverityLabels(locale)
 
   useEffect(() => {
     let cancelled = false
@@ -55,12 +68,15 @@ export default function ReviewResult() {
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        setError(describeNetworkError(err) ?? (err instanceof Error ? err.message : 'Impossible de charger le débriefing.'))
+        setError(
+          describeNetworkError(err, locale) ??
+            (err instanceof Error ? err.message : t('result.loadError')),
+        )
       })
     return () => {
       cancelled = true
     }
-  }, [challengeId])
+  }, [challengeId, locale, t])
 
   if (notSubmitted) return <Navigate to={`/review/${challengeId}`} replace />
 
@@ -68,17 +84,17 @@ export default function ReviewResult() {
     return (
       <div className="auth-container">
         <div className="auth-card dashboard">
-          <h2>Débriefing</h2>
+          <h2>{t('result.title')}</h2>
           <FeedbackMessage kind="error">{error}</FeedbackMessage>
           <Link to="/dashboard" className="btn btn-primary review-link-btn">
-            Retour au tableau de bord
+            {t('common.backToDashboard')}
           </Link>
         </div>
       </div>
     )
   }
 
-  if (!attempt) return <LoadingScreen label="Chargement du débriefing…" />
+  if (!attempt) return <LoadingScreen label={t('result.loading')} />
 
   const { scenario, scoreBreakdown: b } = attempt
   const falsePositives = attempt.comments.filter((c) => c.matched_issue_id === null)
@@ -91,33 +107,46 @@ export default function ReviewResult() {
             {attempt.score}
           </div>
           <div>
-            <p className="result-kicker">Note : {attempt.score} sur 100</p>
+            <p className="result-kicker">
+              {t('result.scoreOutOf100', { score: attempt.score })}
+            </p>
             <h1 id="result-title" className="pr-title">
               {scenario.title}
             </h1>
             <div className="pr-tags">
-              <span className="pr-category-tag">{label(LANGUAGE_LABELS, scenario.language)}</span>
-              <span className="pr-category-tag">{label(DIFFICULTY_LABELS, scenario.difficulty)}</span>
-              <span className="pr-category-tag">{label(CATEGORY_LABELS, scenario.category)}</span>
+              <span className="pr-category-tag">{label(languageLabels, scenario.language, locale)}</span>
+              <span className="pr-category-tag">{label(difficultyLabels, scenario.difficulty, locale)}</span>
+              <span className="pr-category-tag">{label(categoryLabels, scenario.category, locale)}</span>
             </div>
           </div>
         </div>
 
         <div className="result-meters">
-          <Meter name={`Anomalies trouvées (${b.found}/${b.total})`} value={b.detection} max={60} />
-          <Meter name="Qualité des explications" value={b.explanation} max={30} />
-          <Meter name={`Précision (${b.false_positives} faux positif${b.false_positives > 1 ? 's' : ''})`} value={b.precision} max={10} />
+          <Meter
+            name={t('result.anomaliesFound', { found: b.found, total: b.total })}
+            value={b.detection}
+            max={60}
+          />
+          <Meter name={t('result.explanationQuality')} value={b.explanation} max={30} />
+          <Meter
+            name={t('result.precision', {
+              count: b.false_positives,
+              plural: b.false_positives > 1 ? (locale === 'fr' ? 's' : 's') : '',
+            })}
+            value={b.precision}
+            max={10}
+          />
         </div>
 
         <div className="result-judge">
           <div className="ticket-label">
             <Scale size={14} aria-hidden="true" />
-            <span>Synthèse du juge</span>
+            <span>{t('result.judgeSummary')}</span>
           </div>
           <p>{attempt.aiSummary}</p>
           {attempt.judgedBy === 'heuristic' && (
             <FeedbackMessage kind="info">
-              Le juge IA était indisponible : seules les lignes pointées ont été comparées.
+              {t('result.heuristicNotice')}
             </FeedbackMessage>
           )}
         </div>
@@ -125,7 +154,7 @@ export default function ReviewResult() {
 
       <section aria-labelledby="issues-title">
         <h2 id="issues-title" className="result-section-title">
-          Anomalies attendues
+          {t('result.expectedIssues')}
         </h2>
         {scenario.groundTruth.map((issue) => {
           const matches = attempt.comments.filter((c) => c.matched_issue_id === issue.id)
@@ -135,9 +164,11 @@ export default function ReviewResult() {
               <header className="result-issue-head">
                 <span className={`result-status ${found ? 'status-found' : 'status-missed'}`}>
                   {found ? <CheckCircle2 size={16} aria-hidden="true" /> : <XCircle size={16} aria-hidden="true" />}
-                  {found ? 'Trouvée' : 'Manquée'}
+                  {found ? t('result.statusFound') : t('result.statusMissed')}
                 </span>
-                <span className="pr-category-tag">Gravité : {label(SEVERITY_LABELS, issue.severity)}</span>
+                <span className="pr-category-tag">
+                  {t('result.severity')} {label(severityLabels, issue.severity, locale)}
+                </span>
                 <code className="result-location">
                   {issue.file}:{issue.line_number}
                 </code>
@@ -150,13 +181,13 @@ export default function ReviewResult() {
                 <div key={`${c.file_path}:${c.line_number}`} className="result-comparison">
                   <div className="result-comparison-col">
                     <div className="detail-header accent">
-                      <MessageSquare size={14} aria-hidden="true" /> Votre remarque (ligne {c.line_number})
+                      <MessageSquare size={14} aria-hidden="true" /> {t('result.yourRemarkAtLine', { line: c.line_number })}
                     </div>
                     <p>{c.text}</p>
                   </div>
                   <div className="result-comparison-col">
                     <div className="detail-header">
-                      <Scale size={14} aria-hidden="true" /> Avis du juge — clarté {c.clarity_score} / 100
+                      <Scale size={14} aria-hidden="true" /> {t('result.judgeFeedbackClarity', { score: c.clarity_score })}
                     </div>
                     <p>{c.feedback}</p>
                   </div>
@@ -165,7 +196,7 @@ export default function ReviewResult() {
 
               <div className="result-fix">
                 <div className="detail-header success">
-                  <CheckCircle2 size={14} aria-hidden="true" /> Correctif attendu
+                  <CheckCircle2 size={14} aria-hidden="true" /> {t('result.expectedFix')}
                 </div>
                 <p>{issue.ideal_fix}</p>
                 {issue.fixed_lines.length > 0 && (
@@ -182,13 +213,13 @@ export default function ReviewResult() {
       {falsePositives.length > 0 && (
         <section aria-labelledby="fp-title">
           <h2 id="fp-title" className="result-section-title">
-            Remarques hors cible
+            {t('result.offTargetRemarks')}
           </h2>
           {falsePositives.map((c) => (
             <article key={`${c.file_path}:${c.line_number}`} className="pr-card result-issue">
               <header className="result-issue-head">
                 <span className="result-status status-neutral">
-                  <CircleAlert size={16} aria-hidden="true" /> Faux positif
+                  <CircleAlert size={16} aria-hidden="true" /> {t('result.statusFalsePositive')}
                 </span>
                 <code className="result-location">
                   {c.file_path}:{c.line_number}
@@ -203,7 +234,7 @@ export default function ReviewResult() {
 
       <div className="result-actions">
         <Link to="/dashboard" className="btn btn-primary review-link-btn">
-          Nouveau challenge
+          {t('result.newChallengeBtn')}
         </Link>
       </div>
     </div>

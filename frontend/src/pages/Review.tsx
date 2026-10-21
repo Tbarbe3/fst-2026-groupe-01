@@ -21,7 +21,13 @@ import DiffViewer from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
-import { CATEGORY_LABELS, DIFFICULTY_LABELS, LANGUAGE_LABELS, label } from '../labels'
+import { useI18n, type Locale } from '../i18n'
+import {
+  getCategoryLabels,
+  getDifficultyLabels,
+  getLanguageLabels,
+  label,
+} from '../labels'
 
 const MAX_COMMENT_LENGTH = 2000
 
@@ -38,11 +44,12 @@ function loadDrafts(attemptId: string): Record<string, ReviewComment> {
   }
 }
 
-function errorMessage(err: unknown, fallback: string): string {
-  return describeNetworkError(err) ?? (err instanceof Error ? err.message : fallback)
+function toErrorMessage(err: unknown, fallback: string, locale: Locale): string {
+  return describeNetworkError(err, locale) ?? (err instanceof Error ? err.message : fallback)
 }
 
 export default function Review() {
+  const { locale, t } = useI18n()
   const { challengeId = '' } = useParams()
   const navigate = useNavigate()
 
@@ -54,6 +61,10 @@ export default function Review() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
+  const categoryLabels = getCategoryLabels(locale)
+  const difficultyLabels = getDifficultyLabels(locale)
+  const languageLabels = getLanguageLabels()
+
   useEffect(() => {
     let cancelled = false
     challengesApi
@@ -64,12 +75,12 @@ export default function Review() {
         else setAttempt(data)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(errorMessage(err, 'Impossible de charger le challenge.'))
+        if (!cancelled) setLoadError(toErrorMessage(err, t('review.loadError'), locale))
       })
     return () => {
       cancelled = true
     }
-  }, [challengeId])
+  }, [challengeId, locale, t])
 
   useEffect(() => {
     sessionStorage.setItem(draftKey(challengeId), JSON.stringify(comments))
@@ -81,18 +92,18 @@ export default function Review() {
     return (
       <div className="auth-container">
         <div className="auth-card dashboard">
-          <h2>Revue de code</h2>
+          <h2>{t('review.title')}</h2>
           <FeedbackMessage kind="error">{loadError}</FeedbackMessage>
           <Link to="/dashboard" className="btn btn-primary review-link-btn">
-            Retour au tableau de bord
+            {t('common.backToDashboard')}
           </Link>
         </div>
       </div>
     )
   }
 
-  if (!attempt) return <LoadingScreen label="Chargement de la pull request…" />
-  if (submitting) return <LoadingScreen label="Le juge évalue votre revue…" />
+  if (!attempt) return <LoadingScreen label={t('review.loadingPr')} />
+  if (submitting) return <LoadingScreen label={t('review.evaluating')} />
 
   const { scenario } = attempt
   const commentList = Object.values(comments).sort(
@@ -130,7 +141,7 @@ export default function Review() {
       sessionStorage.removeItem(draftKey(attempt.id))
       await navigate(`/review/${attempt.id}/result`, { replace: true })
     } catch (err: unknown) {
-      setSubmitError(errorMessage(err, 'La soumission a échoué. Réessayez.'))
+      setSubmitError(toErrorMessage(err, t('review.submitError'), locale))
       setSubmitting(false)
     }
   }
@@ -150,7 +161,7 @@ export default function Review() {
           }}
         >
           <label htmlFor={fieldId} className="review-inline-label">
-            Remarque sur la ligne {lineNumber}
+            {t('review.remarkOnLine', { line: lineNumber })}
           </label>
           <textarea
             id={fieldId}
@@ -159,7 +170,7 @@ export default function Review() {
             maxLength={MAX_COMMENT_LENGTH}
             rows={3}
             autoFocus
-            placeholder="Décrivez le problème, son impact et une piste de correction."
+            placeholder={t('review.textareaPlaceholder')}
             onChange={(e) => setEditing({ ...editing, draft: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setEditing(null)
@@ -167,10 +178,10 @@ export default function Review() {
           />
           <div className="review-inline-actions">
             <button type="button" className="btn-secondary-sm" onClick={() => setEditing(null)}>
-              Annuler
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary-sm">
-              Enregistrer la remarque
+              {t('review.saveRemark')}
             </button>
           </div>
         </form>
@@ -183,15 +194,15 @@ export default function Review() {
       <div className="review-inline-comment">
         <div className="review-inline-comment-head">
           <MessageSquare size={14} aria-hidden="true" />
-          <span>Votre remarque, ligne {lineNumber}</span>
+          <span>{t('review.yourRemarkLine', { line: lineNumber })}</span>
         </div>
         <p className="review-inline-comment-text">{saved.text}</p>
         <div className="review-inline-actions">
           <button type="button" className="btn-secondary-sm" onClick={() => startEditing(path, lineNumber)}>
-            <Pencil size={14} aria-hidden="true" /> Modifier
+            <Pencil size={14} aria-hidden="true" /> {t('common.edit')}
           </button>
           <button type="button" className="btn-secondary-sm" onClick={() => removeComment(path, lineNumber)}>
-            <Trash2 size={14} aria-hidden="true" /> Supprimer
+            <Trash2 size={14} aria-hidden="true" /> {t('common.delete')}
           </button>
         </div>
       </div>
@@ -205,7 +216,7 @@ export default function Review() {
           <div className="pr-header-top">
             <div className="pr-title-group">
               <span className="pr-status-badge">
-                <GitPullRequest size={14} aria-hidden="true" /> PR ouverte
+                <GitPullRequest size={14} aria-hidden="true" /> {t('review.prOpen')}
               </span>
               <h1 className="pr-title">{scenario.title}</h1>
             </div>
@@ -213,21 +224,21 @@ export default function Review() {
 
           <div className="pr-meta-row">
             <div className="pr-author">
-              <span className="author-label">Auteur :</span>
+              <span className="author-label">{t('home.author')}</span>
               <span className="author-name">{scenario.persona.name}</span>
               {scenario.persona.bio && <span className="author-tag">({scenario.persona.bio})</span>}
             </div>
             <div className="pr-tags">
-              <span className="pr-category-tag">{label(LANGUAGE_LABELS, scenario.language)}</span>
+              <span className="pr-category-tag">{label(languageLabels, scenario.language, locale)}</span>
               {attempt.isMystery ? (
                 <span className="pr-category-tag">
-                  <HelpCircle size={12} aria-hidden="true" /> Mode Mystère
+                  <HelpCircle size={12} aria-hidden="true" /> {t('review.mysteryMode')}
                 </span>
               ) : (
                 <>
-                  <span className="pr-category-tag">{label(DIFFICULTY_LABELS, scenario.difficulty)}</span>
+                  <span className="pr-category-tag">{label(difficultyLabels, scenario.difficulty, locale)}</span>
                   <span className="pr-category-tag">
-                    <ShieldAlert size={12} aria-hidden="true" /> {label(CATEGORY_LABELS, scenario.category)}
+                    <ShieldAlert size={12} aria-hidden="true" /> {label(categoryLabels, scenario.category, locale)}
                   </span>
                 </>
               )}
@@ -237,7 +248,7 @@ export default function Review() {
           <div className="pr-ticket-box">
             <div className="ticket-label">
               <Terminal size={13} aria-hidden="true" />
-              <span>Contexte du ticket métier :</span>
+              <span>{t('review.ticketContext')}</span>
             </div>
             <p className="ticket-text">{scenario.ticketContext}</p>
           </div>
@@ -263,11 +274,9 @@ export default function Review() {
 
         <aside className="review-sidebar" aria-labelledby="review-sidebar-title">
           <h2 id="review-sidebar-title" className="review-sidebar-title">
-            Vos remarques ({commentList.length})
+            {t('review.remarksSidebar', { count: commentList.length })}
           </h2>
-          <p className="review-sidebar-hint">
-            Cliquez sur un numéro de ligne pour signaler un problème. Seules les lignes du nouveau code sont commentables.
-          </p>
+          <p className="review-sidebar-hint">{t('review.sidebarHint')}</p>
 
           {commentList.length > 0 && (
             <ul className="review-comment-list">
@@ -294,7 +303,7 @@ export default function Review() {
 
           <button type="button" className="btn btn-primary review-submit-btn" onClick={handleSubmit}>
             <Send size={16} aria-hidden="true" />
-            {commentList.length > 0 ? 'Soumettre la revue' : 'Approuver sans remarque'}
+            {commentList.length > 0 ? t('review.submitWithRemarks') : t('review.approveWithoutRemarks')}
           </button>
         </aside>
       </div>

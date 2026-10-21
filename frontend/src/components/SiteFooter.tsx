@@ -1,11 +1,14 @@
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Code2 } from 'lucide-react'
 
 import { authClient } from '../auth'
-import { useSectionHref } from '../hooks/useSectionHref'
+import { handleSectionClick, useSectionHref } from '../hooks/useSectionHref'
+import { useI18n } from '../i18n'
 
 export default function SiteFooter() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const { t } = useI18n()
   const { data: session } = authClient.useSession()
   const isAuthenticated = Boolean(session?.user)
 
@@ -29,37 +32,49 @@ export default function SiteFooter() {
             </div>
             <span className="brand-name">Code How?</span>
           </div>
-          <p className="footer-brand-desc">
-            La plateforme d'entraînement à la relecture critique de code, à la sécurité
-            applicative (OWASP) et aux bonnes pratiques de Pull Request.
-          </p>
+          <p className="footer-brand-desc">{t('footer.brandDesc')}</p>
         </div>
 
         <div className="footer-links-col">
-          <div className="footer-links-title">Plateforme</div>
+          <div className="footer-links-title">{t('footer.platform')}</div>
           <ul className="footer-links-list">
             <li>
-              <a href={sectionHref('#demo')}>Démo de Code</a>
+              <Link
+                to={sectionHref('#demo')}
+                onClick={handleSectionClick('#demo', pathname)}
+              >
+                {t('footer.codeDemo')}
+              </Link>
             </li>
             <li>
-              <a href={sectionHref('#languages')}>Langages supportés</a>
+              <Link
+                to={sectionHref('#languages')}
+                onClick={handleSectionClick('#languages', pathname)}
+              >
+                {t('footer.supportedLanguages')}
+              </Link>
             </li>
             <li>
-              <a href={sectionHref('#workflow')}>Méthode & Workflow</a>
+              <Link
+                to={sectionHref('#workflow')}
+                onClick={handleSectionClick('#workflow', pathname)}
+              >
+                {t('footer.methodWorkflow')}
+              </Link>
             </li>
             <li>
-              <Link to="/dashboard">Tableau de bord</Link>
+              <Link to="/dashboard">{t('footer.dashboard')}</Link>
             </li>
           </ul>
         </div>
 
         <div className="footer-links-col">
-          <div className="footer-links-title">Compte & Accès</div>
+          <div className="footer-links-title">{t('footer.accountAccess')}</div>
           <ul className="footer-links-list">
             {isAuthenticated ? (
               <>
                 <li>
-                  <Link to="/dashboard">Mon profil</Link>
+                  <Link to="/dashboard">{t('footer.myProfile')}</Link>
                 </li>
                 <li>
                   <button
@@ -67,20 +82,20 @@ export default function SiteFooter() {
                     onClick={handleLogout}
                     className="footer-btn-link"
                   >
-                    Se déconnecter
+                    {t('footer.logout')}
                   </button>
                 </li>
               </>
             ) : (
               <>
                 <li>
-                  <Link to="/login">Se connecter</Link>
+                  <Link to="/login">{t('footer.login')}</Link>
                 </li>
                 <li>
-                  <Link to="/register">S'inscrire</Link>
+                  <Link to="/register">{t('footer.register')}</Link>
                 </li>
                 <li>
-                  <Link to="/dashboard">Dashboard (connexion requise)</Link>
+                  <Link to="/dashboard">{t('footer.dashboardReq')}</Link>
                 </li>
               </>
             )}
@@ -88,15 +103,13 @@ export default function SiteFooter() {
         </div>
 
         <div className="footer-links-col">
-          <div className="footer-links-title">Qualité & Normes</div>
-          <p className="footer-note">
-            Interface accessible conforme WCAG AA avec contrastes vérifiés et navigation clavier complète.
-          </p>
+          <div className="footer-links-title">{t('footer.qualityNorms')}</div>
+          <p className="footer-note">{t('footer.wcagNote')}</p>
         </div>
       </div>
 
       <div className="footer-bottom">
-        <p>© 2026 Code How? • Projet Technologies Web — Tous droits réservés.</p>
+        <p>{t('footer.copyright')}</p>
       </div>
     </footer>
   )

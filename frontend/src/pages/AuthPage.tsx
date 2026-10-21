@@ -8,8 +8,10 @@ import { describeNetworkError } from '../errors/network-error.ts'
 import {
   describePasswordPolicy,
   MIN_PASSWORD_LENGTH,
+  MAX_PASSWORD_LENGTH,
   validatePassword,
 } from '../errors/password-policy.ts'
+import { useI18n, type Locale } from '../i18n'
 
 interface AuthPageProps {
   mode: 'login' | 'register'
@@ -29,7 +31,25 @@ interface AuthError {
  * change. « Adresse déjà utilisée » divulgue un compte : compromis assumé
  * faute de réinitialisation de mot de passe. Cf. BACKLOG.md, entrée 12.
  */
-function translateSignUpError(error: AuthError): string {
+function translateSignUpError(error: AuthError, locale: Locale): string {
+  if (locale === 'en') {
+    switch (error.code) {
+      case 'USER_ALREADY_EXISTS':
+      case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
+        return 'An account already exists with this email address.'
+      case 'INVALID_EMAIL':
+        return 'Invalid email address.'
+      case 'PASSWORD_TOO_SHORT':
+        return `Password must contain at least ${MIN_PASSWORD_LENGTH} characters.`
+      case 'PASSWORD_TOO_LONG':
+        return `Password is too long (${MAX_PASSWORD_LENGTH} characters maximum).`
+      case 'WEAK_PASSWORD':
+        return error.message || describePasswordPolicy('en')
+      default:
+        return 'Registration failed. Please check the information entered.'
+    }
+  }
+
   switch (error.code) {
     case 'USER_ALREADY_EXISTS':
     case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
@@ -41,14 +61,14 @@ function translateSignUpError(error: AuthError): string {
     case 'PASSWORD_TOO_LONG':
       return 'Le mot de passe est trop long.'
     case 'WEAK_PASSWORD':
-      // Message déjà en français, produit par la politique du serveur.
-      return error.message || describePasswordPolicy()
+      return error.message || describePasswordPolicy('fr')
     default:
       return "L'inscription a échoué. Vérifiez les informations saisies."
   }
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
+  const { locale, t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
   const isLogin = mode === 'login'
@@ -75,20 +95,20 @@ export default function AuthPage({ mode }: AuthPageProps) {
   // mot de passe créé avant son renforcement doit continuer à fonctionner.
   // Le serveur applique la même règle (cf. password-policy.ts côté backend).
   const validate = (): string | null => {
-    if (!email.trim()) return "L'adresse e-mail est requise."
-    if (!isLogin && !name.trim()) return 'Le pseudonyme est requis.'
+    if (!email.trim()) return t('auth.emailRequired')
+    if (!isLogin && !name.trim()) return t('auth.nameRequired')
 
     if (isLogin) {
       if (password.length < MIN_PASSWORD_LENGTH) {
-        return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
+        return t('auth.passwordLength', { min: MIN_PASSWORD_LENGTH })
       }
       return null
     }
 
-    const passwordError = validatePassword(password)
+    const passwordError = validatePassword(password, locale)
     if (passwordError) return passwordError
     if (password !== passwordConfirm) {
-      return 'Les deux mots de passe ne correspondent pas.'
+      return t('auth.passwordsDoNotMatch')
     }
     return null
   }
@@ -123,8 +143,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
         // adresses sont inscrites.
         setError(
           isLogin
-            ? 'Adresse e-mail ou mot de passe incorrect.'
-            : translateSignUpError(authError),
+            ? t('auth.invalidCredentials')
+            : translateSignUpError(authError, locale),
         )
         return
       }
@@ -132,9 +152,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
       const from = (location.state as LocationState | null)?.from
       await navigate(from && from !== '/dashboard' ? from : '/', { replace: true })
     } catch (err: unknown) {
-      // Un message anglais brut (ex. « Failed to fetch ») ne doit jamais
-      // s'afficher : describeNetworkError le reconnaît, sinon repli générique.
-      setError(describeNetworkError(err) ?? 'Une erreur est survenue. Réessayez.')
+      setError(describeNetworkError(err, locale) ?? t('common.genericError'))
     } finally {
       setIsLoading(false)
     }
@@ -142,12 +160,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const emailField = (
     <div className="form-group">
-      <label htmlFor="email">Adresse e-mail</label>
+      <label htmlFor="email">{t('auth.emailLabel')}</label>
       <input
         type="email"
         id="email"
         className="form-control"
-        placeholder="vous@exemple.fr"
+        placeholder={t('auth.emailPlaceholder')}
         autoComplete="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
@@ -159,7 +177,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
   const passwordField = (
     <div className="form-group">
-      <label htmlFor="password">Mot de passe</label>
+      <label htmlFor="password">{t('auth.passwordLabel')}</label>
       <input
         type="password"
         id="password"
@@ -172,7 +190,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         maxLength={128}
       />
       {!isLogin && (
-        <small className="form-hint">{describePasswordPolicy()}</small>
+        <small className="form-hint">{describePasswordPolicy(locale)}</small>
       )}
     </div>
   )
@@ -181,22 +199,22 @@ export default function AuthPage({ mode }: AuthPageProps) {
     <div className={`auth-container${isLogin ? '' : ' auth-container-wide'}`}>
       <div className="auth-card">
         <div className="auth-top-nav">
-          <Link to="/" className="btn-back-home" aria-label="Retour à l'accueil">
+          <Link to="/" className="btn-back-home" aria-label={t('common.backToHome')}>
             <ArrowLeft size={16} />
-            <span>Retour à l'accueil</span>
+            <span>{t('common.backToHome')}</span>
           </Link>
         </div>
 
         <div className="auth-header">
           <h1>
-            <Link to="/" className="auth-brand-link" title="Retour à l'accueil">
+            <Link to="/" className="auth-brand-link" title={t('common.backToHome')}>
               Code How?
             </Link>
           </h1>
           <p>
             {isLogin
-              ? 'Connectez-vous à votre compte'
-              : 'Créez un nouveau compte'}
+              ? t('auth.loginTitle')
+              : t('auth.registerTitle')}
           </p>
         </div>
 
@@ -210,12 +228,12 @@ export default function AuthPage({ mode }: AuthPageProps) {
             <>
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="name">Pseudonyme</label>
+                  <label htmlFor="name">{t('auth.nameLabel')}</label>
                   <input
                     type="text"
                     id="name"
                     className="form-control"
-                    placeholder="Ex : thomas"
+                    placeholder={t('auth.namePlaceholder')}
                     autoComplete="nickname"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -223,7 +241,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     maxLength={60}
                   />
                   <small className="form-hint">
-                    Visible par les autres utilisateurs.
+                    {t('auth.nameHint')}
                   </small>
                 </div>
                 {emailField}
@@ -233,7 +251,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                 {passwordField}
                 <div className="form-group">
                   <label htmlFor="passwordConfirm">
-                    Confirmez le mot de passe
+                    {t('auth.passwordConfirmLabel')}
                   </label>
                   <input
                     type="password"
@@ -261,17 +279,17 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
           <button type="submit" className="btn btn-primary" disabled={isLoading}>
             {isLoading
-              ? 'Patientez…'
+              ? t('auth.pleaseWait')
               : isLogin
-                ? 'Se connecter'
-                : "S'inscrire"}
+                ? t('auth.signInBtn')
+                : t('auth.signUpBtn')}
           </button>
         </form>
 
         <div className="toggle-mode">
-          <span>{isLogin ? 'Pas encore de compte ?' : 'Déjà un compte ?'}</span>
+          <span>{isLogin ? t('auth.noAccount') : t('auth.hasAccount')}</span>
           <Link to={isLogin ? '/register' : '/login'}>
-            {isLogin ? "S'inscrire" : 'Se connecter'}
+            {isLogin ? t('auth.signUpBtn') : t('auth.signInBtn')}
           </Link>
         </div>
       </div>
