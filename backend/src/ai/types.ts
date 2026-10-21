@@ -1,5 +1,6 @@
 export const LANGUAGES = ['typescript', 'python', 'go', 'java', 'php', 'rust', 'csharp'] as const
-export const DIFFICULTIES = ['junior', 'intermediate', 'senior'] as const
+// Niveaux 1 (syntaxe) à 5 (subtil), stockés en SMALLINT par PostgreSQL.
+export const DIFFICULTIES = ['1', '2', '3', '4', '5'] as const
 // Doit rester aligné sur le type PostgreSQL `error_category_type`.
 export const CATEGORIES = [
   'security_owasp',

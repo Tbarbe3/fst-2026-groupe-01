@@ -12,6 +12,7 @@ export interface FakeSession {
 export const authClientMock = {
   useSession: vi.fn(),
   signOut: vi.fn(),
+  deleteUser: vi.fn(),
   signIn: { email: vi.fn() },
   signUp: { email: vi.fn() },
 }

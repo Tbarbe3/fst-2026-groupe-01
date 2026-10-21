@@ -15,7 +15,7 @@ describe('challengesApi', () => {
 
   it('envoie les paramètres du challenge en JSON', async () => {
     const fetchMock = mockFetch(201, { attemptId: 'a1' })
-    const body = { language: 'typescript', difficulty: 'junior', category: 'security_owasp' }
+    const body = { language: 'typescript', difficulty: '3', category: 'security_owasp' }
 
     await expect(challengesApi.create(body)).resolves.toEqual({ attemptId: 'a1' })
     expect(fetchMock).toHaveBeenCalledWith('/api/challenges', {
@@ -41,5 +41,19 @@ describe('challengesApi', () => {
   it('masque le détail d’une erreur 5xx', async () => {
     mockFetch(500, { message: 'stack trace interne' })
     await expect(challengesApi.history()).rejects.toThrow(/Le serveur a rencontré une erreur/)
+  })
+})
+
+describe('traduction des erreurs de l’API', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('traduit le code d’erreur plutôt que le message brut', async () => {
+    mockFetch(409, { code: 'ALREADY_SUBMITTED', message: 'Cette revue a déjà été soumise.' })
+    await expect(challengesApi.submit('a1', [])).rejects.toThrow('Cette revue a déjà été soumise.')
+  })
+
+  it('explique la limite de générations atteinte', async () => {
+    mockFetch(429, { message: 'Rate limit exceeded, retry in 1 hour' })
+    await expect(challengesApi.create({ mystery: true })).rejects.toThrow(/Trop de challenges/)
   })
 })

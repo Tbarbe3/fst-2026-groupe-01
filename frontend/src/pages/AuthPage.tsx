@@ -4,14 +4,14 @@ import { ArrowLeft } from 'lucide-react'
 
 import { authClient } from '../auth'
 import FeedbackMessage from '../components/FeedbackMessage'
+import { translateAuthError } from '../errors/auth-errors'
 import { describeNetworkError } from '../errors/network-error.ts'
 import {
   describePasswordPolicy,
   MIN_PASSWORD_LENGTH,
-  MAX_PASSWORD_LENGTH,
   validatePassword,
 } from '../errors/password-policy.ts'
-import { useI18n, type Locale } from '../i18n'
+import { useI18n } from '../i18n'
 
 interface AuthPageProps {
   mode: 'login' | 'register'
@@ -19,52 +19,6 @@ interface AuthPageProps {
 
 interface LocationState {
   from?: string
-}
-
-interface AuthError {
-  code?: string
-  message?: string
-}
-
-/**
- * Traduit par `code`, pas par le `message` anglais — stable si le texte
- * change. « Adresse déjà utilisée » divulgue un compte : compromis assumé
- * faute de réinitialisation de mot de passe. Cf. BACKLOG.md, entrée 12.
- */
-function translateSignUpError(error: AuthError, locale: Locale): string {
-  if (locale === 'en') {
-    switch (error.code) {
-      case 'USER_ALREADY_EXISTS':
-      case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
-        return 'An account already exists with this email address.'
-      case 'INVALID_EMAIL':
-        return 'Invalid email address.'
-      case 'PASSWORD_TOO_SHORT':
-        return `Password must contain at least ${MIN_PASSWORD_LENGTH} characters.`
-      case 'PASSWORD_TOO_LONG':
-        return `Password is too long (${MAX_PASSWORD_LENGTH} characters maximum).`
-      case 'WEAK_PASSWORD':
-        return error.message || describePasswordPolicy('en')
-      default:
-        return 'Registration failed. Please check the information entered.'
-    }
-  }
-
-  switch (error.code) {
-    case 'USER_ALREADY_EXISTS':
-    case 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL':
-      return 'Un compte existe déjà avec cette adresse e-mail.'
-    case 'INVALID_EMAIL':
-      return "L'adresse e-mail n'est pas valide."
-    case 'PASSWORD_TOO_SHORT':
-      return `Le mot de passe doit contenir au moins ${MIN_PASSWORD_LENGTH} caractères.`
-    case 'PASSWORD_TOO_LONG':
-      return 'Le mot de passe est trop long.'
-    case 'WEAK_PASSWORD':
-      return error.message || describePasswordPolicy('fr')
-    default:
-      return "L'inscription a échoué. Vérifiez les informations saisies."
-  }
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
@@ -100,7 +54,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
 
     if (isLogin) {
       if (password.length < MIN_PASSWORD_LENGTH) {
-        return t('auth.passwordLength', { min: MIN_PASSWORD_LENGTH })
+        return t('errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH })
       }
       return null
     }
@@ -144,7 +98,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         setError(
           isLogin
             ? t('auth.invalidCredentials')
-            : translateSignUpError(authError, locale),
+            : translateAuthError(authError, 'errors.signUpFailed', locale),
         )
         return
       }

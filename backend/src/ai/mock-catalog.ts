@@ -15,7 +15,7 @@ export interface CatalogEntry {
 export const MOCK_CATALOG: CatalogEntry[] = [
   {
     language: 'typescript',
-    difficulty: 'junior',
+    difficulty: '3',
     category: 'security_owasp',
     scenario: {
       title: 'PR #142 : Réception des webhooks Stripe',
@@ -87,7 +87,7 @@ export const MOCK_CATALOG: CatalogEntry[] = [
   },
   {
     language: 'python',
-    difficulty: 'intermediate',
+    difficulty: '4',
     category: 'performance',
     scenario: {
       title: 'PR #87 : Export CSV des commandes du mois',
@@ -157,7 +157,7 @@ export const MOCK_CATALOG: CatalogEntry[] = [
   },
   {
     language: 'go',
-    difficulty: 'senior',
+    difficulty: '5',
     category: 'race_condition',
     scenario: {
       title: 'PR #311 : Cache mémoire des taux de change',
@@ -228,7 +228,7 @@ export const MOCK_CATALOG: CatalogEntry[] = [
   },
   {
     language: 'java',
-    difficulty: 'intermediate',
+    difficulty: '4',
     category: 'business_logic',
     scenario: {
       title: 'PR #64 : Codes promo sur le panier',
@@ -292,6 +292,147 @@ export const MOCK_CATALOG: CatalogEntry[] = [
       ],
     },
   },
+  {
+    language: 'java',
+    difficulty: '1',
+    category: 'business_logic',
+    scenario: {
+      title: 'PR #12 : Total du panier avec frais de port',
+      ticket_context:
+        '[SHOP-31] Le total du panier doit inclure 4,90 € de frais de port quand le montant des articles est inférieur à 50 €.',
+      persona: {
+        name: 'Lucas',
+        archetype: 'stagiaire_débutant',
+        bio: 'Premier stage, écrit son code dans le bloc-notes et pousse sans compiler.',
+      },
+      files: [
+        {
+          path: 'src/main/java/shop/Cart.java',
+          hunks: [
+            {
+              start_line: 20,
+              lines: [
+                { kind: 'context', text: '    public double total() {' },
+                { kind: 'add', text: '        double sum = 0;' },
+                { kind: 'add', text: '        for (Item item : items) {' },
+                { kind: 'add', text: '            sum += item.getPrice() * item.getQuantity()', issue_ref: 'I1' },
+                { kind: 'add', text: '        }' },
+                { kind: 'add', text: '        if (sum < 50) {' },
+                { kind: 'add', text: '            sum += 4.90;' },
+                { kind: 'add', text: '        }' },
+                { kind: 'add', text: '        return sum;' },
+                { kind: 'context', text: '    }' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'business_logic',
+          severity: 'major',
+          expected_issue: 'Il manque le point-virgule à la fin de la ligne.',
+          why: 'En Java, chaque instruction se termine par un point-virgule : sans lui, le fichier ne compile pas et le panier ne peut plus être calculé.',
+          ideal_fix: 'Ajouter « ; » à la fin de l’instruction.',
+          fixed_lines: ['            sum += item.getPrice() * item.getQuantity();'],
+        },
+      ],
+    },
+  },
+  {
+    language: 'python',
+    difficulty: '1',
+    category: 'security_owasp',
+    scenario: {
+      title: 'PR #8 : Longueur minimale du mot de passe',
+      ticket_context:
+        '[AUTH-9] À l’inscription, refuser les mots de passe de moins de 12 caractères avec un message clair.',
+      persona: {
+        name: 'Emma',
+        archetype: 'débutante_motivée',
+        bio: 'Apprend Python depuis un mois, relit sa logique mais pas toujours la syntaxe.',
+      },
+      files: [
+        {
+          path: 'app/validators.py',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: 'MIN_LENGTH = 12' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'def validate_password(password: str) -> None:' },
+                { kind: 'add', text: '    if len(password) < MIN_LENGTH', issue_ref: 'I1' },
+                { kind: 'add', text: '        raise ValueError("Le mot de passe doit faire au moins 12 caractères.")' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'security_owasp',
+          severity: 'major',
+          expected_issue: 'Il manque les deux-points « : » à la fin du if.',
+          why: 'En Python, un if doit se terminer par « : ». Sans eux, le module lève une SyntaxError à l’import et l’inscription est cassée.',
+          ideal_fix: 'Ajouter « : » après la condition.',
+          fixed_lines: ['    if len(password) < MIN_LENGTH:'],
+        },
+      ],
+    },
+  },
+  {
+    language: 'typescript',
+    difficulty: '2',
+    category: 'architecture',
+    scenario: {
+      title: 'PR #27 : Affichage des noms des participants',
+      ticket_context:
+        '[EVT-14] Sur la page d’un événement, afficher la liste des noms des participants, en majuscules.',
+      persona: {
+        name: 'Hugo',
+        archetype: 'junior_appliqué',
+        bio: 'Code proprement mais teste uniquement avec une liste vide.',
+      },
+      files: [
+        {
+          path: 'src/events/participants.ts',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: 'export interface Participant {' },
+                { kind: 'add', text: '  name: string' },
+                { kind: 'add', text: '}' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'export function participantNames(participants: Participant[]): string[] {' },
+                { kind: 'add', text: '  const names: string[] = []' },
+                { kind: 'add', text: '  for (let i = 0; i <= participants.length; i++) {', issue_ref: 'I1' },
+                { kind: 'add', text: '    names.push(participants[i].name.toUpperCase())' },
+                { kind: 'add', text: '  }' },
+                { kind: 'add', text: '  return names' },
+                { kind: 'add', text: '}' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'architecture',
+          severity: 'major',
+          expected_issue: 'La boucle va un tour trop loin : « <= » au lieu de « < ».',
+          why: 'Au dernier tour, i vaut participants.length : participants[i] est undefined et l’accès à .name lève une TypeError, dès qu’il y a au moins un participant.',
+          ideal_fix: 'Utiliser i < participants.length, ou plus simplement participants.map((p) => p.name.toUpperCase()).',
+          fixed_lines: ['  for (let i = 0; i < participants.length; i++) {'],
+        },
+      ],
+    },
+  },
 ]
 
 /** Entrée la plus proche des paramètres, à défaut de correspondance exacte. */
@@ -299,7 +440,13 @@ export function pickCatalogEntry(
   params: { language: Language; difficulty: Difficulty; category: Category },
   random: () => number = Math.random,
 ): CatalogEntry {
+  // Le niveau prime : un débutant ne doit jamais recevoir un scénario de niveau 5.
+  const sameLevel = MOCK_CATALOG.filter((e) => e.difficulty === params.difficulty)
   const tiers = [
+    sameLevel.filter((e) => e.language === params.language && e.category === params.category),
+    sameLevel.filter((e) => e.category === params.category),
+    sameLevel.filter((e) => e.language === params.language),
+    sameLevel,
     MOCK_CATALOG.filter(
       (e) => e.language === params.language && e.category === params.category,
     ),

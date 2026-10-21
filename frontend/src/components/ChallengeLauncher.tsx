@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router'
 import { HelpCircle, Play } from 'lucide-react'
 
 import { challengesApi } from '../api/challenges'
-import { describeNetworkError } from '../errors/network-error'
+import { describeError } from '../errors/network-error'
 import { useI18n } from '../i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,
-  getLanguageLabels,
+  LANGUAGE_LABELS,
 } from '../labels'
 import FeedbackMessage from './FeedbackMessage'
 import LoadingScreen from './LoadingScreen'
@@ -24,14 +24,13 @@ export default function ChallengeLauncher() {
   const { locale, t } = useI18n()
   const navigate = useNavigate()
   const [language, setLanguage] = useState('typescript')
-  const [difficulty, setDifficulty] = useState('junior')
+  const [difficulty, setDifficulty] = useState('1')
   const [category, setCategory] = useState('security_owasp')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState('')
 
   const categoryLabels = getCategoryLabels(locale)
   const difficultyLabels = getDifficultyLabels(locale)
-  const languageLabels = getLanguageLabels()
 
   const launch = async (mystery: boolean) => {
     setError('')
@@ -42,10 +41,7 @@ export default function ChallengeLauncher() {
       )
       await navigate(`/review/${attemptId}`)
     } catch (err: unknown) {
-      setError(
-        describeNetworkError(err, locale) ??
-          (err instanceof Error ? err.message : t('launcher.error')),
-      )
+      setError(describeError(err, t('launcher.error'), locale))
       setPending(false)
     }
   }
@@ -65,7 +61,7 @@ export default function ChallengeLauncher() {
         <label className="launcher-field">
           <span>{t('launcher.language')}</span>
           <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-            {options(languageLabels)}
+            {options(LANGUAGE_LABELS)}
           </select>
         </label>
         <label className="launcher-field">

@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
   GitPullRequest,
   HelpCircle,
   MessageSquare,
   Pencil,
   Send,
   ShieldAlert,
+  Target,
   Terminal,
   Trash2,
 } from 'lucide-react'
@@ -20,18 +24,21 @@ import type { DiffLine } from '../components/DiffViewer'
 import DiffViewer from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
-import { describeNetworkError } from '../errors/network-error'
-import { useI18n, type Locale } from '../i18n'
+import ReviewHelp from '../components/ReviewHelp'
+import { describeError } from '../errors/network-error'
+import { useI18n } from '../i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,
-  getLanguageLabels,
+  LANGUAGE_LABELS,
   label,
 } from '../labels'
 
 const MAX_COMMENT_LENGTH = 2000
 
-const keyOf = (path: string, line: number) => `${path}:${line}`
+const HELP_SEEN_KEY = 'codehow:review-help-seen'
+
+const keyOf =(path: string, line: number) => `${path}:${line}`
 
 // Un rechargement de page ne doit pas effacer une revue en cours de rédaction.
 const draftKey = (attemptId: string) => `codehow:review:${attemptId}`
@@ -42,10 +49,6 @@ function loadDrafts(attemptId: string): Record<string, ReviewComment> {
   } catch {
     return {}
   }
-}
-
-function toErrorMessage(err: unknown, fallback: string, locale: Locale): string {
-  return describeNetworkError(err, locale) ?? (err instanceof Error ? err.message : fallback)
 }
 
 export default function Review() {
@@ -60,10 +63,17 @@ export default function Review() {
   const [editing, setEditing] = useState<{ path: string; line: number; draft: string } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [confirmApprove, setConfirmApprove] = useState(false)
+  // Ouverte d'office à la première partie, pour guider les débutants.
+  const [helpOpen, setHelpOpen] = useState(() => !localStorage.getItem(HELP_SEEN_KEY))
+
+  const toggleHelp = (open: boolean) => {
+    localStorage.setItem(HELP_SEEN_KEY, '1')
+    setHelpOpen(open)
+  }
 
   const categoryLabels = getCategoryLabels(locale)
   const difficultyLabels = getDifficultyLabels(locale)
-  const languageLabels = getLanguageLabels()
 
   useEffect(() => {
     let cancelled = false
@@ -75,7 +85,7 @@ export default function Review() {
         else setAttempt(data)
       })
       .catch((err: unknown) => {
-        if (!cancelled) setLoadError(toErrorMessage(err, t('review.loadError'), locale))
+        if (!cancelled) setLoadError(describeError(err, t('review.loadError'), locale))
       })
     return () => {
       cancelled = true
@@ -109,9 +119,14 @@ export default function Review() {
   const commentList = Object.values(comments).sort(
     (a, b) => a.file_path.localeCompare(b.file_path) || a.line_number - b.line_number,
   )
+  const hasStarted = editing !== null || commentList.length > 0
+  const stepDone = (step: number) =>
+    (step <= 1 && hasStarted) || (step === 2 && commentList.length > 0)
 
-  const startEditing = (path: string, line: number) =>
+  const startEditing = (path: string, line: number) => {
+    setConfirmApprove(false)
     setEditing({ path, line, draft: comments[keyOf(path, line)]?.text ?? '' })
+  }
 
   const saveDraft = () => {
     if (!editing) return
@@ -141,7 +156,7 @@ export default function Review() {
       sessionStorage.removeItem(draftKey(attempt.id))
       await navigate(`/review/${attempt.id}/result`, { replace: true })
     } catch (err: unknown) {
-      setSubmitError(toErrorMessage(err, t('review.submitError'), locale))
+      setSubmitError(describeError(err, t('review.submitError'), locale))
       setSubmitting(false)
     }
   }
@@ -220,6 +235,15 @@ export default function Review() {
               </span>
               <h1 className="pr-title">{scenario.title}</h1>
             </div>
+            <button
+              type="button"
+              className={`btn-secondary-sm review-help-toggle${helpOpen ? ' active' : ''}`}
+              onClick={() => toggleHelp(!helpOpen)}
+              aria-expanded={helpOpen}
+              aria-controls="review-help"
+            >
+              <HelpCircle size={16} aria-hidden="true" /> {t('review.help')}
+            </button>
           </div>
 
           <div className="pr-meta-row">
@@ -229,7 +253,7 @@ export default function Review() {
               {scenario.persona.bio && <span className="author-tag">({scenario.persona.bio})</span>}
             </div>
             <div className="pr-tags">
-              <span className="pr-category-tag">{label(languageLabels, scenario.language, locale)}</span>
+              <span className="pr-category-tag">{label(LANGUAGE_LABELS, scenario.language, locale)}</span>
               {attempt.isMystery ? (
                 <span className="pr-category-tag">
                   <HelpCircle size={12} aria-hidden="true" /> {t('review.mysteryMode')}
@@ -252,8 +276,25 @@ export default function Review() {
             </div>
             <p className="ticket-text">{scenario.ticketContext}</p>
           </div>
+
+          <p className="review-mission">
+            <Target size={16} aria-hidden="true" /> {t('review.mission')}
+          </p>
+
+          <ol className="review-steps" aria-label={t('review.stepsAria')}>
+            {(['review.step1', 'review.step2', 'review.step3', 'review.step4'] as const).map((key, i) => (
+              <li key={key} className={stepDone(i) ? 'done' : ''}>
+                <span className="review-step-num" aria-hidden="true">
+                  {stepDone(i) ? <Check size={14} /> : i + 1}
+                </span>
+                {t(key)}
+              </li>
+            ))}
+          </ol>
         </div>
       </div>
+
+      {helpOpen && <ReviewHelp onClose={() => toggleHelp(false)} />}
 
       <div className="review-layout">
         <div className="review-files">
@@ -278,7 +319,9 @@ export default function Review() {
           </h2>
           <p className="review-sidebar-hint">{t('review.sidebarHint')}</p>
 
-          {commentList.length > 0 && (
+          {commentList.length === 0 ? (
+            <p className="review-empty-remarks">{t('review.noRemarksYet')}</p>
+          ) : (
             <ul className="review-comment-list">
               {commentList.map((c) => (
                 <li key={keyOf(c.file_path, c.line_number)}>
@@ -301,10 +344,31 @@ export default function Review() {
             {submitError && <FeedbackMessage kind="error">{submitError}</FeedbackMessage>}
           </div>
 
-          <button type="button" className="btn btn-primary review-submit-btn" onClick={handleSubmit}>
-            <Send size={16} aria-hidden="true" />
-            {commentList.length > 0 ? t('review.submitWithRemarks') : t('review.approveWithoutRemarks')}
-          </button>
+          {commentList.length > 0 ? (
+            <button type="button" className="btn btn-primary review-submit-btn" onClick={handleSubmit}>
+              <Send size={16} aria-hidden="true" />
+              {t('review.submitWithRemarks', { count: commentList.length })}
+            </button>
+          ) : confirmApprove ? (
+            <div className="review-approve-confirm" role="alertdialog" aria-labelledby="approve-title" aria-describedby="approve-desc">
+              <p id="approve-title" className="review-approve-title">
+                <AlertTriangle size={16} aria-hidden="true" /> {t('review.approveWarningTitle')}
+              </p>
+              <p id="approve-desc">{t('review.approveWarning')}</p>
+              <div className="review-inline-actions">
+                <button type="button" className="btn-secondary-sm" onClick={() => setConfirmApprove(false)} autoFocus>
+                  {t('review.keepReviewing')}
+                </button>
+                <button type="button" className="btn-primary-sm" onClick={handleSubmit}>
+                  {t('review.approveConfirm')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="btn-secondary-sm review-approve-btn" onClick={() => setConfirmApprove(true)}>
+              <CheckCircle2 size={16} aria-hidden="true" /> {t('review.approveWithoutRemarks')}
+            </button>
+          )}
         </aside>
       </div>
     </div>

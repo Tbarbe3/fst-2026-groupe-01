@@ -12,9 +12,17 @@ describe('pickCatalogEntry', () => {
     expect(entry.category).toBe(target.category)
   })
 
+  it.each(['1', '2', '3', '4', '5'] as const)('respecte le niveau %s avant le langage et la catégorie', (level) => {
+    const entry = pickCatalogEntry(
+      { language: 'rust', difficulty: level, category: 'race_condition' },
+      () => 0,
+    )
+    expect(entry.difficulty).toBe(level)
+  })
+
   it('renvoie toujours une entrée, même sans correspondance', () => {
     const entry = pickCatalogEntry(
-      { language: 'cobol' as never, difficulty: 'junior', category: 'inexistante' as never },
+      { language: 'cobol' as never, difficulty: '3', category: 'inexistante' as never },
       () => 0.99,
     )
     expect(MOCK_CATALOG).toContain(entry)

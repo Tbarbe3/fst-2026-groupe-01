@@ -36,6 +36,39 @@ describe('SiteHeader', () => {
     expect(screen.getByText('Paramètres du Compte')).toBeInTheDocument()
   })
 
+  it('montre langue et thème aux visiteurs seulement', () => {
+    renderAt('/')
+    expect(screen.getByRole('button', { name: 'Passer en anglais' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Passer en thème/ })).toBeInTheDocument()
+  })
+
+  it('remplace les réglages par la navigation de l’espace connecté', () => {
+    sessionActive({ id: 'u1', name: 'Alice', email: 'alice@code.fr' })
+    renderAt('/dashboard')
+
+    expect(screen.queryByRole('button', { name: 'Passer en anglais' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Passer en thème/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Accueil' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('link', { name: 'Tableau de bord' })).toHaveClass('active')
+  })
+
+  it('supprime le compte après confirmation par mot de passe', async () => {
+    sessionActive({ id: 'u1', name: 'Alice', email: 'alice@code.fr' })
+    authClientMock.deleteUser.mockResolvedValue({ data: { success: true }, error: null })
+    const user = userEvent.setup()
+    renderAt('/dashboard')
+
+    await user.click(screen.getByRole('button', { name: /Paramètres du compte de Alice/ }))
+    await user.click(screen.getByRole('button', { name: /Supprimer mon compte/ }))
+    const confirm = screen.getByRole('button', { name: /Supprimer définitivement/ })
+    expect(confirm).toBeDisabled()
+
+    await user.type(screen.getByLabelText(/irréversible/), 'MonMotDePasse!1')
+    await user.click(confirm)
+
+    expect(authClientMock.deleteUser).toHaveBeenCalledWith({ password: 'MonMotDePasse!1' })
+  })
+
   // Hors de l'accueil, une ancre seule pointerait vers une section inexistante.
   it('fait pointer les ancres vers l’accueil depuis une autre page', () => {
     renderAt('/dashboard')

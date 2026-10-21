@@ -33,56 +33,19 @@ import ChallengeLauncher from '../components/ChallengeLauncher'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
-import { useI18n, type Locale } from '../i18n'
+import { useI18n } from '../i18n'
+import { getAuditorRank } from '../auditor-rank'
 import {
   getCategoryLabels,
   getDifficultyLabels,
-  getLanguageLabels,
+  LANGUAGE_LABELS,
   label,
 } from '../labels'
-
-function getAuditorRank(count: number, avgScore: number, locale: Locale, t: (k: string, p?: Record<string, string | number>) => string) {
-  if (count === 0) {
-    return {
-      title: t('dashboard.rankNovice'),
-      progress: 0,
-      desc: t('dashboard.rankNoviceDesc'),
-    }
-  }
-  if (count < 3) {
-    const remaining = 3 - count
-    return {
-      title: t('dashboard.rankApprentice'),
-      progress: Math.round((count / 3) * 100),
-      desc: t('dashboard.rankApprenticeDesc', {
-        count: remaining,
-        p1: remaining > 1 ? 's' : '',
-        p2: locale === 'fr' && remaining > 1 ? 's' : '',
-      }),
-    }
-  }
-  if (count < 8) {
-    const remaining = 8 - count
-    return {
-      title: t('dashboard.rankConfirmed'),
-      progress: Math.round(((count - 3) / 5) * 100),
-      desc: t('dashboard.rankConfirmedDesc', {
-        count: remaining,
-        p1: remaining > 1 ? 's' : '',
-      }),
-    }
-  }
-  return {
-    title: t('dashboard.rankSenior'),
-    progress: 100,
-    desc: t('dashboard.rankSeniorDesc', { avg: avgScore }),
-  }
-}
 
 export default function Dashboard() {
   const { locale, t, formatDate } = useI18n()
   const { data: session } = authClient.useSession()
-  const displayName = session?.user?.name || session?.user?.email || 'Développeur'
+  const displayName = session?.user?.name || session?.user?.email || ''
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTheme, setExpandedTheme] = useState<string | null>(null)
@@ -91,7 +54,6 @@ export default function Dashboard() {
 
   const categoryLabels = getCategoryLabels(locale)
   const difficultyLabels = getDifficultyLabels(locale)
-  const languageLabels = getLanguageLabels()
 
   useEffect(() => {
     let cancelled = false
@@ -135,11 +97,10 @@ export default function Dashboard() {
   const bestScore = totalScenarios > 0 ? Math.max(...filteredHistory.map((s) => s.score)) : 0
   const lastScore = totalScenarios > 0 ? filteredHistory[filteredHistory.length - 1].score : 0
 
-  const rankInfo = getAuditorRank(allHistory.length, averageScore, locale, t)
+  const rankInfo = getAuditorRank(allHistory.length, averageScore, t)
 
   return (
     <div className="dashboard-page">
-      {/* 1. Hero Section */}
       <section className="dashboard-hero-section" aria-labelledby="dashboard-title">
         <div className="dashboard-hero-container">
           <div className="hero-welcome-badge" role="status">
@@ -155,10 +116,8 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {/* 2. Main Grid */}
-      <section className="dashboard-content-section" aria-label="Espace de travail du tableau de bord">
+      <section className="dashboard-content-section" aria-label={t('dashboard.workspaceAria')}>
         <div className="dashboard-grid">
-          {/* 1. Colonne gauche : Historique */}
           <div className="dashboard-panel history-panel">
             <div className="panel-title">
               <div className="panel-title-main">
@@ -249,7 +208,7 @@ export default function Dashboard() {
                             </div>
                             <div className="scenario-meta">
                               <span className="meta-tag">
-                                <Code2 size={12} aria-hidden="true" /> {label(languageLabels, scenario.language, locale)}
+                                <Code2 size={12} aria-hidden="true" /> {label(LANGUAGE_LABELS, scenario.language, locale)}
                               </span>
                               <span className="meta-tag">{label(difficultyLabels, scenario.difficulty, locale)}</span>
                               <span className="scenario-date">
@@ -269,7 +228,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 2. Colonne centrale : Détails du Scénario OU Lanceur */}
           <div className="dashboard-panel main-panel">
             <div className="panel-title">
               <div className="panel-title-main">
@@ -331,7 +289,7 @@ export default function Dashboard() {
                     <div className="scenario-detail-body">
                       <div className="scenario-tags-row">
                         <span className="tag-badge">
-                          <strong>{t('dashboard.language')}</strong> {label(languageLabels, selectedScenario.language, locale)}
+                          <strong>{t('dashboard.language')}</strong> {label(LANGUAGE_LABELS, selectedScenario.language, locale)}
                         </span>
                         <span className="tag-badge">
                           <strong>{t('dashboard.level')}</strong> {label(difficultyLabels, selectedScenario.difficulty, locale)}
@@ -382,7 +340,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* 3. Colonne droite : Progression */}
           <div className="dashboard-panel progression-panel">
             <div className="panel-title">
               <div className="panel-title-main">

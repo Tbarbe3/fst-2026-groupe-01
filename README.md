@@ -25,7 +25,7 @@
 ### 2. Écran Hub & Sélection du challenge (/dashboard)
 * Grille des challenges filtrables par :
   * **Langage :** TypeScript, Python, Go, Rust, Java, C#, PHP, etc.
-  * **Difficulté :** Junior, Intermédiaire, Senior.
+  * **Difficulté :** niveaux 1 à 5 (1 : faute de syntaxe, 2 : bug évident, 3 : anomalie visible, 4 : anomalies cachées, 5 : expert).
   * **Type d'erreur :** Sécurité (OWASP), Performance, Robustesse/Architecture, Accessibilité, Logique métier.
 * **Bouton « Mode Mystère » (Aléatoire) :** Déclenche la génération d'un scénario sans dévoiler le niveau ni le type d'erreur au préalable pour forcer un audit à l'aveugle.
 * Tableau de bord personnel avec courbe de progression temporelle et taux de réussite par catégorie.
@@ -64,7 +64,7 @@ User (1) ───────────< ReviewAttempt (N) >─────�
   * `title` (string : ex. "Fix: Refactorisation du module de paiement et session")
   * `ticket_context` (text : description du ticket précisant l'objectif fonctionnel)
   * `language` (enum/string : typescript, python, go, rust, etc.)
-  * `difficulty` (enum : junior, intermediate, senior)
+  * `difficulty` (SMALLINT de 1 à 5)
   * `error_category` (enum : security_owasp, performance, architecture, race_condition, business_logic)
   * `persona` (JSON : {"name": "Kevin", "archetype": "junior_pressé", "bio": "Fait confiance aveuglément à Copilot"})
   * `diff_content` (text : patch Git unifié ou structure JSON des fichiers modifiés)

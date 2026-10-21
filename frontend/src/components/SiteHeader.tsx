@@ -1,32 +1,33 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
-import { Code2, LayoutDashboard, LogIn, LogOut, UserPlus } from 'lucide-react'
+import { Link, NavLink, useLocation } from 'react-router'
+import { Code2, Home, LayoutDashboard, LogIn, LogOut, UserPlus } from 'lucide-react'
 
 import { authClient } from '../auth'
+import { useLogout } from '../hooks/useLogout'
 import { handleSectionClick, useSectionHref } from '../hooks/useSectionHref'
 import { useI18n } from '../i18n'
 import AccountModal from './AccountModal'
 import LanguageToggle from './LanguageToggle'
+import ThemeToggle from './ThemeToggle'
+
+const SECTIONS = [
+  { hash: '#demo', key: 'header.navDemo' },
+  { hash: '#languages', key: 'header.navLanguages' },
+  { hash: '#workflow', key: 'header.navMethod' },
+  { hash: '#progression', key: 'header.navProgress' },
+] as const
 
 export default function SiteHeader() {
-  const navigate = useNavigate()
   const { pathname } = useLocation()
   const { t } = useI18n()
   const { data: session } = authClient.useSession()
-  const isAuthenticated = Boolean(session?.user)
-  const displayName = session?.user?.name || session?.user?.email || 'Développeur'
-
-  const handleLogout = async () => {
-    try {
-      await authClient.signOut()
-    } catch {
-      // Ignoré si échec réseau
-    }
-    await navigate('/', { replace: true })
-  }
-  const userInitial = displayName.charAt(0).toUpperCase()
+  const logout = useLogout()
   const sectionHref = useSectionHref()
   const [accountOpen, setAccountOpen] = useState(false)
+
+  const user = session?.user
+  const displayName = user?.name || user?.email || ''
+  const navClass = ({ isActive }: { isActive: boolean }) => `nav-link${isActive ? ' active' : ''}`
 
   return (
     <>
@@ -37,9 +38,7 @@ export default function SiteHeader() {
             className="landing-brand"
             aria-label={t('header.brandAria')}
             onClick={() => {
-              if (typeof window !== 'undefined' && pathname === '/') {
-                window.scrollTo({ top: 0, behavior: 'smooth' })
-              }
+              if (pathname === '/') window.scrollTo({ top: 0, behavior: 'smooth' })
             }}
           >
             <div className="brand-icon-wrapper">
@@ -49,51 +48,34 @@ export default function SiteHeader() {
             <span className="brand-badge">{t('header.brandBadge')}</span>
           </Link>
 
-          <nav className="landing-nav" aria-label={t('header.navAria')}>
-            <Link
-              to={sectionHref('#demo')}
-              className="nav-link"
-              onClick={handleSectionClick('#demo', pathname)}
-            >
-              {t('header.navDemo')}
-            </Link>
-            <Link
-              to={sectionHref('#languages')}
-              className="nav-link"
-              onClick={handleSectionClick('#languages', pathname)}
-            >
-              {t('header.navLanguages')}
-            </Link>
-            <Link
-              to={sectionHref('#workflow')}
-              className="nav-link"
-              onClick={handleSectionClick('#workflow', pathname)}
-            >
-              {t('header.navMethod')}
-            </Link>
-            <Link
-              to={sectionHref('#progression')}
-              className="nav-link"
-              onClick={handleSectionClick('#progression', pathname)}
-            >
-              {t('header.navProgress')}
-            </Link>
+          <nav className={`landing-nav${user ? '' : ' landing-nav-sections'}`} aria-label={t('header.navAria')}>
+            {user ? (
+              <>
+                <NavLink to="/" end className={navClass}>
+                  <Home size={16} aria-hidden="true" />
+                  <span className="nav-link-text">{t('header.home')}</span>
+                </NavLink>
+                <NavLink to="/dashboard" className={navClass}>
+                  <LayoutDashboard size={16} aria-hidden="true" />
+                  <span className="nav-link-text">{t('header.dashboard')}</span>
+                </NavLink>
+              </>
+            ) : (
+              SECTIONS.map(({ hash, key }) => (
+                <Link
+                  key={hash}
+                  to={sectionHref(hash)}
+                  className="nav-link"
+                  onClick={handleSectionClick(hash, pathname)}
+                >
+                  {t(key)}
+                </Link>
+              ))
+            )}
           </nav>
 
           <div className="landing-actions">
-            <LanguageToggle />
-
-            {/* Bouton d'accès au dashboard toujours accessible */}
-            <Link
-              to="/dashboard"
-              className="btn-dashboard-nav"
-              title={t('header.dashboardTitle')}
-            >
-              <LayoutDashboard size={16} />
-              <span>{t('header.dashboard')}</span>
-            </Link>
-
-            {isAuthenticated ? (
+            {user ? (
               <div className="user-nav-group">
                 <button
                   type="button"
@@ -103,22 +85,18 @@ export default function SiteHeader() {
                   aria-label={t('header.accountSettingsFor', { name: displayName })}
                 >
                   <div className="user-chip-avatar">
-                    {session?.user?.image ? (
-                      <img
-                        src={session.user.image}
-                        alt="Avatar"
-                        className="avatar-img"
-                      />
+                    {user.image ? (
+                      <img src={user.image} alt="" className="avatar-img" />
                     ) : (
-                      userInitial
+                      displayName.charAt(0).toUpperCase()
                     )}
                   </div>
                   <span className="user-chip-name">{displayName}</span>
                 </button>
                 <button
                   type="button"
-                  onClick={handleLogout}
-                  className="btn-icon-nav"
+                  onClick={() => void logout()}
+                  className="btn-icon-nav btn-logout"
                   title={t('header.logout')}
                   aria-label={t('header.logout')}
                 >
@@ -126,16 +104,21 @@ export default function SiteHeader() {
                 </button>
               </div>
             ) : (
-              <div className="auth-nav-group">
-                <Link to="/login" className="btn-nav-login">
-                  <LogIn size={15} />
-                  <span>{t('header.login')}</span>
-                </Link>
-                <Link to="/register" className="btn-nav-register">
-                  <UserPlus size={15} />
-                  <span>{t('header.register')}</span>
-                </Link>
-              </div>
+              <>
+                {/* Connecté, ces réglages vivent dans les paramètres du compte. */}
+                <LanguageToggle />
+                <ThemeToggle />
+                <div className="auth-nav-group">
+                  <Link to="/login" className="btn-nav-login">
+                    <LogIn size={15} />
+                    <span>{t('header.login')}</span>
+                  </Link>
+                  <Link to="/register" className="btn-nav-register">
+                    <UserPlus size={15} />
+                    <span>{t('header.register')}</span>
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         </div>

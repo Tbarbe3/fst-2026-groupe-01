@@ -72,7 +72,7 @@ describe('Dashboard Page', () => {
           title: 'Vulnérabilité XSS dans la recherche',
           language: 'typescript',
           category: 'security_owasp',
-          difficulty: 'junior',
+          difficulty: '3',
           score: 85,
           submittedAt: '2026-10-18T10:00:00.000Z',
         },

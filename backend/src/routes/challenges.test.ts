@@ -27,7 +27,7 @@ function attempt(overrides: Partial<AttemptRecord> = {}): AttemptRecord {
       title: built.title,
       ticketContext: built.ticketContext,
       language: 'typescript',
-      difficulty: 'junior',
+      difficulty: '3',
       category: 'security_owasp',
       persona: built.persona,
       files: built.files,
@@ -66,6 +66,7 @@ describe('routes des challenges', () => {
     const app = await buildTestApp(fakeRepo(), null)
     const res = await app.inject({ method: 'GET', url: `/api/attempts/${ATTEMPT_ID}` })
     expect(res.statusCode).toBe(401)
+    expect(res.json().code).toBe('UNAUTHORIZED')
   })
 
   it('crée un challenge en générant un scénario si aucun n’est disponible', async () => {
@@ -74,7 +75,7 @@ describe('routes des challenges', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/challenges',
-      payload: { language: 'typescript', difficulty: 'junior', category: 'security_owasp' },
+      payload: { language: 'typescript', difficulty: '3', category: 'security_owasp' },
     })
     expect(res.statusCode).toBe(201)
     expect(res.json()).toEqual({ attemptId: ATTEMPT_ID })
@@ -93,6 +94,7 @@ describe('routes des challenges', () => {
     const app = await buildTestApp()
     const res = await app.inject({ method: 'POST', url: '/api/challenges', payload: { language: 'go' } })
     expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('MISSING_PARAMS')
   })
 
   it('refuse un langage inconnu', async () => {
@@ -100,7 +102,7 @@ describe('routes des challenges', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/challenges',
-      payload: { language: 'cobol', difficulty: 'junior', category: 'performance' },
+      payload: { language: 'cobol', difficulty: '3', category: 'performance' },
     })
     expect(res.statusCode).toBe(400)
   })
@@ -150,6 +152,7 @@ describe('routes des challenges', () => {
       payload: { comments: [{ file_path: issue.file, line_number: 9999, text: 'x' }] },
     })
     expect(res.statusCode).toBe(400)
+    expect(res.json().code).toBe('INVALID_COMMENT')
   })
 
   it('refuse une seconde soumission', async () => {
@@ -160,11 +163,13 @@ describe('routes des challenges', () => {
       payload: { comments: [] },
     })
     expect(res.statusCode).toBe(409)
+    expect(res.json().code).toBe('ALREADY_SUBMITTED')
   })
 
   it('répond 404 pour la tentative d’un autre utilisateur', async () => {
     const repo = fakeRepo({ getAttempt: vi.fn(async () => null) })
     const res = await (await buildTestApp(repo)).inject({ method: 'GET', url: `/api/attempts/${ATTEMPT_ID}` })
     expect(res.statusCode).toBe(404)
+    expect(res.json().code).toBe('ATTEMPT_NOT_FOUND')
   })
 })

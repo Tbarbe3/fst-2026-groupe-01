@@ -29,7 +29,7 @@ export default function Home() {
   const location = useLocation()
   const { data: session } = authClient.useSession()
   const isAuthenticated = Boolean(session?.user)
-  const displayName = session?.user?.name || session?.user?.email || 'Développeur'
+  const displayName = session?.user?.name || session?.user?.email || ''
 
   const [activeTabId, setActiveTabId] = useState<string>('typescript')
   const [viewMode, setViewMode] = useState<'anomaly' | 'solution'>('anomaly')
@@ -58,22 +58,14 @@ export default function Home() {
   return (
     <div className="landing-content">
       <div className="landing-main">
-        {/* 2. Hero Section */}
         <section className="hero-section" aria-labelledby="hero-title">
           <div className="hero-container">
             {isAuthenticated ? (
               <div className="hero-welcome-badge" role="status">
                 <span className="welcome-emoji" aria-hidden="true">👋</span>
                 <span>
-                  {locale === 'fr' ? (
-                    <>
-                      Bonjour <strong className="welcome-pseudo">{displayName}</strong> ! Prêt pour une nouvelle revue de code ?
-                    </>
-                  ) : (
-                    <>
-                      Welcome back <strong className="welcome-pseudo">{displayName}</strong>! Ready for a new code review?
-                    </>
-                  )}
+                  {t('home.welcomeHello')} <strong className="welcome-pseudo">{displayName}</strong>
+                  {t('home.welcomeReady')}
                 </span>
               </div>
             ) : (
@@ -117,7 +109,6 @@ export default function Home() {
               )}
             </div>
 
-            {/* Statistiques / Preuves de valeur */}
             <div className="hero-metrics" role="region" aria-label={t('home.metricsAria')}>
               <div className="metric-item">
                 <div className="metric-value">7+</div>
@@ -133,16 +124,10 @@ export default function Home() {
                 <div className="metric-value">100%</div>
                 <div className="metric-label">{t('home.metricPr')}</div>
               </div>
-              <div className="metric-divider" />
-              <div className="metric-item">
-                <div className="metric-value">OWASP & Perf</div>
-                <div className="metric-label">{t('home.metricOwasp')}</div>
-              </div>
             </div>
           </div>
         </section>
 
-        {/* 3. Section Le Code en direct (Interactive PR Review Showcase) */}
         <section id="demo" className="demo-section" aria-labelledby="demo-title">
           <div className="section-header">
             <div className="section-pill">
@@ -156,7 +141,6 @@ export default function Home() {
           </div>
 
           <div className="demo-workspace">
-            {/* Sélecteur de langage / scénario */}
             <div className="demo-language-tabs" role="tablist" aria-label={t('home.demoTabsAria')}>
               {demoScenarios.map((scenario) => {
                 const isActive = scenario.id === activeTabId
@@ -184,14 +168,12 @@ export default function Home() {
               })}
             </div>
 
-            {/* Fenêtre de la Pull Request */}
             <div
               className="pr-card"
               role="tabpanel"
               id={`panel-${currentScenario.id}`}
               aria-labelledby={`tab-${currentScenario.id}`}
             >
-              {/* En-tête de la Pull Request */}
               <div className="pr-header">
                 <div className="pr-header-top">
                   <div className="pr-title-group">
@@ -238,7 +220,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Ticket Jira / Contexte fonctionnel */}
                 <div className="pr-ticket-box">
                   <div className="ticket-label">
                     <Terminal size={13} />
@@ -248,7 +229,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Fichier et Diff Viewer */}
               <DiffViewer
                 filename={currentScenario.filename}
                 lines={
@@ -257,7 +237,6 @@ export default function Home() {
                     : currentScenario.fixedDiff.map((line) => ({ ...line, isVulnerable: false }))
                 }
               >
-                {/* Annotation & Commentaire de revue inline */}
                 {viewMode === 'anomaly' && (
                   <div className="inline-review-box">
                     <div className="review-comment-card">
@@ -312,7 +291,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 4. Section Langages & Catégories de Failles */}
         <section id="languages" className="languages-section" aria-labelledby="languages-title">
           <div className="section-header">
             <div className="section-pill">
@@ -347,7 +325,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Carte vedette : Mode Mystère */}
           <div className="mystery-mode-banner">
             <div className="mystery-icon-box">
               <Flame size={28} className="mystery-icon" />
@@ -366,7 +343,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 5. Section Workflow en 4 étapes */}
         <section id="workflow" className="workflow-section" aria-labelledby="workflow-title">
           <div className="section-header">
             <div className="section-pill">
@@ -406,7 +382,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 6. Section Tableau de Bord & Progression */}
         <section id="progression" className="dashboard-preview-section" aria-labelledby="progression-title">
           <div className="progression-card">
             <div className="progression-content">
@@ -488,38 +463,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 7. Section Call to Action (CTA final) */}
-        <section className="cta-banner-section" aria-labelledby="cta-banner-title">
-          <div className="cta-banner-card">
-            <h2 id="cta-banner-title" className="cta-banner-title">
-              {t('home.ctaTitle')}
-            </h2>
-            <p className="cta-banner-text">{t('home.ctaDesc')}</p>
-
-            <div className="cta-banner-buttons">
-              {isAuthenticated ? (
-                <Link to="/dashboard" className="hero-btn-primary">
-                  <LayoutDashboard size={18} />
-                  <span>{t('home.myDashboard', { name: displayName })}</span>
-                  <ArrowRight size={18} />
-                </Link>
-              ) : (
-                <>
-                  <Link to="/register" className="hero-btn-primary">
-                    <UserPlus size={18} />
-                    <span>{t('home.createFreeAccount')}</span>
-                    <ArrowRight size={18} />
-                  </Link>
-                  <Link to="/login" className="hero-btn-secondary">
-                    <LogIn size={18} />
-                    <span>{t('home.signIn')}</span>
-                  </Link>
-                </>
-              )}
             </div>
           </div>
         </section>

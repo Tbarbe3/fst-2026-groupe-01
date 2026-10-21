@@ -8,7 +8,7 @@ import { generateScenario, judgeAttempt } from './service.js'
 import type { GenerationParams } from './types.js'
 
 const log = { warn: vi.fn(), error: vi.fn(), info: vi.fn() } as unknown as FastifyBaseLogger
-const PARAMS: GenerationParams = { language: 'typescript', difficulty: 'junior', category: 'security_owasp' }
+const PARAMS: GenerationParams = { language: 'typescript', difficulty: '3', category: 'security_owasp' }
 const ENTRY = MOCK_CATALOG[0]
 
 function fakeGemini(overrides: Partial<AiProvider>): AiProvider {
