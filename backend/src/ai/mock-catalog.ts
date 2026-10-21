@@ -1,10 +1,38 @@
-import type { Category, Difficulty, GeneratedScenario, Language } from './types.js'
+import type { Category, Difficulty, GeneratedScenario, Language, Locale } from './types.js'
+
+interface IssueText {
+  expected_issue: string
+  why: string
+  ideal_fix: string
+}
+
+/** Textes anglais du scénario ; le code du diff est commun aux deux langues. */
+interface EnglishText {
+  title: string
+  ticket_context: string
+  persona: { archetype: string; bio: string }
+  issues: Record<string, IssueText>
+}
 
 export interface CatalogEntry {
   language: Language
   difficulty: Difficulty
   category: Category
+  en: EnglishText
   scenario: GeneratedScenario
+}
+
+export function localizedScenario(entry: CatalogEntry, locale: Locale): GeneratedScenario {
+  const scenario = structuredClone(entry.scenario)
+  if (locale === 'fr') return scenario
+  const { en } = entry
+  return {
+    ...scenario,
+    title: en.title,
+    ticket_context: en.ticket_context,
+    persona: { ...scenario.persona, ...en.persona },
+    issues: scenario.issues.map((issue) => ({ ...issue, ...en.issues[issue.id] })),
+  }
 }
 
 /**
@@ -17,6 +45,21 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'typescript',
     difficulty: '3',
     category: 'security_owasp',
+    en: {
+      title: 'PR #142: Receiving Stripe webhooks',
+      ticket_context: '[PAY-218] When a customer completes a payment, Stripe sends us a checkout.session.completed event. We must listen to it to mark the order as paid and send the confirmation email.',
+      persona: {
+        archetype: 'rushed_junior',
+        bio: 'Ships fast, tests the happy path with the Stripe tool and moves on.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The Stripe webhook signature is not verified.',
+          why: 'The endpoint is public: anyone can send a fake checkout.session.completed event and get an order marked as paid without paying.',
+          ideal_fix: 'Read the raw body (express.raw) and call stripe.webhooks.constructEvent(rawBody, req.headers["stripe-signature"], endpointSecret) before any processing.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #142 : Réception des webhooks Stripe',
       ticket_context:
@@ -89,6 +132,26 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'python',
     difficulty: '4',
     category: 'performance',
+    en: {
+      title: "PR #87: CSV export of the month's orders",
+      ticket_context: "[DATA-54] Accounting wants a CSV export of the month's orders with, for each one, the customer name and the number of items. About 40,000 orders per month.",
+      persona: {
+        archetype: 'methodical_intermediate',
+        bio: 'Clean, readable code, but tests on a ten-row development database.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'N+1 queries: two SQL queries per order inside the loop.',
+          why: 'For 40,000 orders the loop runs 80,001 queries. The export will take minutes and load the database.',
+          ideal_fix: 'Load the customer with select_related and count items with annotate(Count(...)) in the initial query.',
+        },
+        I2: {
+          expected_issue: 'The whole CSV is built in memory before being returned.',
+          why: 'The full file lives in the worker memory. A generator or a streaming response would avoid the memory spike.',
+          ideal_fix: 'Write row by row into a StreamingHttpResponse through a generator.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #87 : Export CSV des commandes du mois',
       ticket_context:
@@ -159,6 +222,21 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'go',
     difficulty: '5',
     category: 'race_condition',
+    en: {
+      title: 'PR #311: In-memory exchange rate cache',
+      ticket_context: '[FX-12] The exchange rate API is slow and billed per call. Set up a 5-minute in-memory cache shared by all HTTP requests of the service.',
+      persona: {
+        archetype: 'confident_senior',
+        bio: 'Experienced, writes idiomatic code quickly and sometimes skips the concurrency review.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The map is read and written from several goroutines without a lock.',
+          why: 'Each HTTP request runs in its own goroutine. Concurrent access to a Go map triggers "fatal error: concurrent map writes" and brings the whole service down.',
+          ideal_fix: 'Protect the map with a sync.RWMutex (RLock to read, Lock to write), or use singleflight to also avoid duplicate calls.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #311 : Cache mémoire des taux de change',
       ticket_context:
@@ -230,6 +308,26 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'java',
     difficulty: '4',
     category: 'business_logic',
+    en: {
+      title: 'PR #64: Promo codes on the cart',
+      ticket_context: '[SHOP-97] Allow entering a promo code at checkout. A code has a discount percentage and a maximum number of uses. A customer can use only one code per order.',
+      persona: {
+        archetype: 'diligent_junior',
+        bio: 'Follows the ticket to the letter and covers the happy path with unit tests.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'Nothing prevents applying several codes, or the same one several times, to a cart.',
+          why: 'Each call lowers the total again. By calling the endpoint repeatedly, a customer drives the cart towards zero, breaking the "one code per order" rule.',
+          ideal_fix: 'Reject if cart.getPromoCode() is already set, store the code on the cart and recompute the discount from the subtotal.',
+        },
+        I2: {
+          expected_issue: 'The maximum number of uses of the code is never checked.',
+          why: 'The counter is incremented but never compared with promo.getMaxUses(): a code limited to 100 uses stays valid forever.',
+          ideal_fix: 'Check promo.getUses() < promo.getMaxUses() before applying the discount.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #64 : Codes promo sur le panier',
       ticket_context:
@@ -296,6 +394,21 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'java',
     difficulty: '1',
     category: 'business_logic',
+    en: {
+      title: 'PR #12: Cart total with shipping fees',
+      ticket_context: '[SHOP-31] The cart total must include €4.90 shipping when the items amount is below €50.',
+      persona: {
+        archetype: 'beginner_intern',
+        bio: 'First internship, writes code in a text editor and pushes without compiling.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The semicolon is missing at the end of the line.',
+          why: 'In Java every statement ends with a semicolon: without it the file does not compile and the cart can no longer be computed.',
+          ideal_fix: 'Add ";" at the end of the statement.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #12 : Total du panier avec frais de port',
       ticket_context:
@@ -344,6 +457,21 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'python',
     difficulty: '1',
     category: 'security_owasp',
+    en: {
+      title: 'PR #8: Minimum password length',
+      ticket_context: '[AUTH-9] On sign-up, reject passwords shorter than 12 characters with a clear message.',
+      persona: {
+        archetype: 'motivated_beginner',
+        bio: 'Has been learning Python for a month, checks the logic but not always the syntax.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The colon ":" is missing at the end of the if.',
+          why: 'In Python an if must end with ":". Without it the module raises a SyntaxError on import and sign-up is broken.',
+          ideal_fix: 'Add ":" after the condition.',
+        },
+      },
+    },
     scenario: {
       title: 'PR #8 : Longueur minimale du mot de passe',
       ticket_context:
@@ -388,6 +516,21 @@ export const MOCK_CATALOG: CatalogEntry[] = [
     language: 'typescript',
     difficulty: '2',
     category: 'architecture',
+    en: {
+      title: "PR #27: Displaying participants' names",
+      ticket_context: "[EVT-14] On an event page, display the list of participants' names in uppercase.",
+      persona: {
+        archetype: 'diligent_junior',
+        bio: 'Writes clean code but only tests with an empty list.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The loop goes one step too far: "<=" instead of "<".',
+          why: 'On the last iteration i equals participants.length: participants[i] is undefined and reading .name throws a TypeError as soon as there is at least one participant.',
+          ideal_fix: 'Use i < participants.length, or simply participants.map((p) => p.name.toUpperCase()).',
+        },
+      },
+    },
     scenario: {
       title: 'PR #27 : Affichage des noms des participants',
       ticket_context:

@@ -4,7 +4,7 @@ import { HelpCircle, Play } from 'lucide-react'
 
 import { challengesApi } from '../api/challenges'
 import { describeError } from '../errors/network-error'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,

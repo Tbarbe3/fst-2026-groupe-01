@@ -1,6 +1,6 @@
 // Dupliqué dans backend/src/password-policy.ts : pas de workspace partagé
 // entre les deux projets. Garder les deux synchronisées (cf. agent.md).
-import { getCurrentLocale, translate, type Locale } from '../i18n'
+import { getCurrentLocale, translate, type Locale } from '@/i18n'
 
 export const MIN_PASSWORD_LENGTH = 8
 export const MAX_PASSWORD_LENGTH = 128

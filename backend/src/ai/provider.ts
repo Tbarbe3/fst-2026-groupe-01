@@ -1,5 +1,6 @@
 import { callGemini } from './gemini.js'
-import { pickCatalogEntry } from './mock-catalog.js'
+import { MESSAGES } from './messages.js'
+import { localizedScenario, pickCatalogEntry } from './mock-catalog.js'
 import {
   GENERATOR_SCHEMA,
   GENERATOR_SYSTEM,
@@ -9,13 +10,14 @@ import {
   judgePrompt,
 } from './prompts.js'
 import { candidateIssues } from './scoring.js'
-import type { GenerationParams, GroundTruthItem, SubmittedComment } from './types.js'
+import type { GenerationParams, GroundTruthItem, Locale, SubmittedComment } from './types.js'
 
 export interface JudgeInput {
   groundTruth: GroundTruthItem[]
   comments: SubmittedComment[]
   /** Texte de la ligne commentée, pour que le juge n'ait pas à lire tout le diff. */
   codeLines: string[]
+  locale: Locale
 }
 
 /** Les deux méthodes renvoient une sortie brute, validée ensuite par l'appelant. */
@@ -59,7 +61,7 @@ export function createGeminiProvider(config: {
         apiKey: config.apiKey,
         model: config.judgeModel,
         system: JUDGE_SYSTEM,
-        prompt: judgePrompt(input.groundTruth, judgeComments(input)),
+        prompt: judgePrompt(input.locale, input.groundTruth, judgeComments(input)),
         schema: JUDGE_SCHEMA,
         temperature: 0,
         timeoutMs: 30_000,
@@ -87,10 +89,11 @@ export function createMockProvider(latencyMs = 1500): AiProvider {
     generatorModel: 'mock',
     async generateScenario(params) {
       await wait()
-      return structuredClone(pickCatalogEntry(params).scenario)
+      return localizedScenario(pickCatalogEntry(params), params.locale)
     },
     async judge(input) {
       await wait()
+      const messages = MESSAGES[input.locale]
       const verdicts = judgeComments(input).map((c) => {
         const issue = input.groundTruth.find((gt) => c.candidate_issue_ids.includes(gt.id))
         if (!issue) {
@@ -98,7 +101,7 @@ export function createMockProvider(latencyMs = 1500): AiProvider {
             comment_index: c.comment_index,
             matched_issue_id: '',
             clarity_score: 0,
-            feedback: 'Cette ligne ne contient pas d’anomalie attendue. Remarque recevable en revue, mais hors du périmètre de l’exercice.',
+            feedback: messages.mockOffTarget,
           }
         }
         const expected = keywords(`${issue.expected_issue} ${issue.why} ${issue.ideal_fix}`)
@@ -108,15 +111,12 @@ export function createMockProvider(latencyMs = 1500): AiProvider {
           comment_index: c.comment_index,
           matched_issue_id: issue.id,
           clarity_score: clarity,
-          feedback:
-            clarity >= 70
-              ? `Bien vu : ${issue.expected_issue.charAt(0).toLowerCase()}${issue.expected_issue.slice(1)} Ton explication couvre l’impact.`
-              : 'Bonne ligne, mais l’explication reste vague : précise la cause et la conséquence concrète.',
+          feedback: clarity >= 70 ? messages.mockClear(issue.expected_issue) : messages.mockVague,
         }
       })
       const found = new Set(verdicts.map((v) => v.matched_issue_id).filter(Boolean)).size
       return {
-        summary: `[Mode simulé] Tu as repéré ${found} anomalie(s) sur ${input.groundTruth.length}. Ce retour est généré sans IA, pour tester l’interface.`,
+        summary: messages.mockSummary(found, input.groundTruth.length),
         verdicts,
       }
     },

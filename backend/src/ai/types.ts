@@ -11,6 +11,10 @@ export const CATEGORIES = [
 ] as const
 export const SEVERITIES = ['critical', 'major', 'minor'] as const
 
+// Langue de rédaction des textes destinés au joueur, celle de l'interface.
+export const LOCALES = ['fr', 'en'] as const
+
+export type Locale = (typeof LOCALES)[number]
 export type Language = (typeof LANGUAGES)[number]
 export type Difficulty = (typeof DIFFICULTIES)[number]
 export type Category = (typeof CATEGORIES)[number]
@@ -20,6 +24,7 @@ export interface GenerationParams {
   language: Language
   difficulty: Difficulty
   category: Category
+  locale: Locale
 }
 
 /**

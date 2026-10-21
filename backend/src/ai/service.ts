@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger } from 'fastify'
 
-import { pickCatalogEntry } from './mock-catalog.js'
+import { localizedScenario, pickCatalogEntry } from './mock-catalog.js'
+import { MESSAGES } from './messages.js'
 import type { AiProvider, JudgeInput } from './provider.js'
 import { buildScenario } from './scenario-builder.js'
 import { computeScore, heuristicJudge, sanitizeJudgeOutput, type ScoreBreakdown } from './scoring.js'
@@ -39,8 +40,8 @@ export async function generateScenario(
 
   const entry = pickCatalogEntry(params)
   return {
-    scenario: buildScenario(structuredClone(entry.scenario)),
-    params: { language: entry.language, difficulty: entry.difficulty, category: entry.category },
+    scenario: buildScenario(localizedScenario(entry, params.locale)),
+    params: { language: entry.language, difficulty: entry.difficulty, category: entry.category, locale: params.locale },
     source: 'seed',
     model: provider.name === 'mock' ? 'mock' : 'catalogue',
   }
@@ -61,16 +62,13 @@ export async function judgeAttempt(
   let judgedBy: JudgementOutcome['judgedBy'] = 'ai'
 
   if (input.comments.length === 0) {
-    result = {
-      summary: 'Tu as approuvé la pull request sans aucune remarque, alors qu’elle contenait des anomalies. C’est exactement le réflexe que cet exercice veut corriger.',
-      verdicts: [],
-    }
+    result = { summary: MESSAGES[input.locale].approvedWithoutRemarks, verdicts: [] }
   } else {
     try {
-      result = sanitizeJudgeOutput(await provider.judge(input), input.comments, input.groundTruth)
+      result = sanitizeJudgeOutput(await provider.judge(input), input.comments, input.groundTruth, input.locale)
     } catch (error) {
       log.warn({ err: error }, 'Juge IA indisponible, repli heuristique')
-      result = heuristicJudge(input.comments, input.groundTruth)
+      result = heuristicJudge(input.comments, input.groundTruth, input.locale)
       judgedBy = 'heuristic'
     }
   }

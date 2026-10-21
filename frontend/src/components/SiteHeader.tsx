@@ -5,7 +5,7 @@ import { Code2, Home, LayoutDashboard, LogIn, LogOut, UserPlus } from 'lucide-re
 import { authClient } from '../auth'
 import { useLogout } from '../hooks/useLogout'
 import { handleSectionClick, useSectionHref } from '../hooks/useSectionHref'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import AccountModal from './AccountModal'
 import LanguageToggle from './LanguageToggle'
 import ThemeToggle from './ThemeToggle'

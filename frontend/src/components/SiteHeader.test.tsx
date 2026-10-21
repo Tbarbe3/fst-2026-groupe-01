@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { authClientMock, sessionAbsent, sessionActive } from '@/tests/session.ts'
-import { I18nProvider } from '../i18n'
+import { I18nProvider } from '@/i18n'
 import SiteHeader from './SiteHeader'
 
 vi.mock('../auth', () => ({ authClient: authClientMock }))

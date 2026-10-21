@@ -1,4 +1,4 @@
-import { getCurrentLocale, translate, type Locale } from '../i18n'
+import { getCurrentLocale, translate, type Locale } from '@/i18n'
 
 /**
  * Détecte un échec réseau (API injoignable) plutôt qu'une erreur applicative :

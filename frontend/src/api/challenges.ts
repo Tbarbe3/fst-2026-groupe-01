@@ -1,5 +1,5 @@
 import type { DiffLine } from '../components/DiffViewer'
-import { getCurrentLocale, translate } from '../i18n'
+import { getCurrentLocale, translate } from '@/i18n'
 
 export interface DiffFile {
   path: string
@@ -126,12 +126,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const challengesApi = {
   create: (body: ChallengeRequest) =>
-    request<{ attemptId: string }>('/challenges', { method: 'POST', body: JSON.stringify(body) }),
+    request<{ attemptId: string }>('/challenges', {
+      method: 'POST',
+      body: JSON.stringify({ ...body, locale: getCurrentLocale() }),
+    }),
   get: (attemptId: string) => request<Attempt>(`/attempts/${encodeURIComponent(attemptId)}`),
   submit: (attemptId: string, comments: ReviewComment[]) =>
     request<{ attemptId: string; score: number }>(
       `/attempts/${encodeURIComponent(attemptId)}/submit`,
-      { method: 'POST', body: JSON.stringify({ comments }) },
+      { method: 'POST', body: JSON.stringify({ comments, locale: getCurrentLocale() }) },
     ),
   history: () => request<{ attempts: AttemptSummary[] }>('/me/attempts'),
 }

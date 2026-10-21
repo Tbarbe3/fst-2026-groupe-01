@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 
 /** Affiche l'icône du thème vers lequel on bascule. */

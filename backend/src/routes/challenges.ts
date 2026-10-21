@@ -6,7 +6,9 @@ import {
   CATEGORIES,
   DIFFICULTIES,
   LANGUAGES,
+  LOCALES,
   type GenerationParams,
+  type Locale,
   type SubmittedComment,
 } from '../ai/types.js'
 import type { AttemptRecord, ChallengesRepo } from '../db/challenges-repo.js'
@@ -71,7 +73,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
     request.userId = userId
   })
 
-  app.post<{ Body: { mystery?: boolean; language?: string; difficulty?: string; category?: string } }>(
+  app.post<{ Body: { mystery?: boolean; language?: string; difficulty?: string; category?: string; locale?: Locale } }>(
     '/challenges',
     {
       config: { rateLimit: GENERATION_RATE_LIMIT },
@@ -84,6 +86,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
             language: { type: 'string', enum: [...LANGUAGES] },
             difficulty: { type: 'string', enum: [...DIFFICULTIES] },
             category: { type: 'string', enum: [...CATEGORIES] },
+            locale: { type: 'string', enum: [...LOCALES] },
           },
         },
       },
@@ -98,6 +101,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
         language: body.language ?? pick(LANGUAGES, random),
         difficulty: mystery ? pick(DIFFICULTIES, random) : body.difficulty,
         category: mystery ? pick(CATEGORIES, random) : body.category,
+        locale: body.locale ?? 'fr',
       } as GenerationParams
 
       // Un scénario déjà en base ne coûte aucun appel à l'IA.
@@ -121,7 +125,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
     return toAttemptView(attempt)
   })
 
-  app.post<{ Params: { id: string }; Body: { comments: SubmittedComment[] } }>(
+  app.post<{ Params: { id: string }; Body: { comments: SubmittedComment[]; locale?: Locale } }>(
     '/attempts/:id/submit',
     {
       // 30 commentaires de 2 000 caractères dépassent les 64 Kio globaux.
@@ -132,6 +136,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
           required: ['comments'],
           additionalProperties: false,
           properties: {
+            locale: { type: 'string', enum: [...LOCALES] },
             comments: {
               type: 'array',
               maxItems: MAX_COMMENTS,
@@ -173,7 +178,7 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
 
       const judgement = await judgeAttempt(
         ai,
-        { groundTruth: attempt.scenario.groundTruth, comments, codeLines },
+        { groundTruth: attempt.scenario.groundTruth, comments, codeLines, locale: request.body.locale ?? 'fr' },
         request.log,
       )
       const saved = await repo.saveJudgement(

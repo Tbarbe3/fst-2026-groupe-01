@@ -7,7 +7,7 @@ import DiffViewer, { type DiffLine } from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeError } from '../errors/network-error'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,

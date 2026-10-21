@@ -7,7 +7,7 @@ import { authClient } from '../auth'
 import { translateAuthError } from '../errors/auth-errors'
 import { describeNetworkError } from '../errors/network-error'
 import { describePasswordPolicy, validatePassword } from '../errors/password-policy'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
 import FeedbackMessage from './FeedbackMessage'
 

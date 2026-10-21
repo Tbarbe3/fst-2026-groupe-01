@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { I18nProvider } from '../i18n'
+import { I18nProvider } from '@/i18n'
 import LanguageToggle from './LanguageToggle'
 
 function renderToggle() {

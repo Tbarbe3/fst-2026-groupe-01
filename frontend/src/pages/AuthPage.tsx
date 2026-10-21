@@ -11,7 +11,7 @@ import {
   MIN_PASSWORD_LENGTH,
   validatePassword,
 } from '../errors/password-policy.ts'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 
 interface AuthPageProps {
   mode: 'login' | 'register'

@@ -4,7 +4,7 @@ import { Code2 } from 'lucide-react'
 import { authClient } from '../auth'
 import { useLogout } from '../hooks/useLogout'
 import { handleSectionClick, useSectionHref } from '../hooks/useSectionHref'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 
 const SECTIONS = [
   { hash: '#demo', key: 'footer.codeDemo' },

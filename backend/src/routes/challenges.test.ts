@@ -82,6 +82,33 @@ describe('routes des challenges', () => {
     expect(repo.insertScenario).toHaveBeenCalledOnce()
   })
 
+  it('cherche et génère le scénario dans la langue du joueur', async () => {
+    const repo = fakeRepo()
+    const app = await buildTestApp(repo)
+    await app.inject({
+      method: 'POST',
+      url: '/api/challenges',
+      payload: { language: 'typescript', difficulty: '3', category: 'security_owasp', locale: 'en' },
+    })
+    expect(repo.findUnplayedScenario).toHaveBeenCalledWith('u1', expect.objectContaining({ locale: 'en' }))
+    const [, outcome] = vi.mocked(repo.insertScenario).mock.calls[0]!
+    expect(outcome.params.locale).toBe('en')
+    expect(outcome.scenario.title).toMatch(/^PR #\d+: /)
+  })
+
+  it('suppose le français quand la langue n’est pas précisée', async () => {
+    const repo = fakeRepo()
+    const app = await buildTestApp(repo)
+    await app.inject({ method: 'POST', url: '/api/challenges', payload: { mystery: true } })
+    expect(repo.findUnplayedScenario).toHaveBeenCalledWith('u1', expect.objectContaining({ locale: 'fr' }))
+  })
+
+  it('refuse une langue inconnue', async () => {
+    const app = await buildTestApp()
+    const res = await app.inject({ method: 'POST', url: '/api/challenges', payload: { mystery: true, locale: 'de' } })
+    expect(res.statusCode).toBe(400)
+  })
+
   it('réutilise un scénario existant sans appeler l’IA', async () => {
     const repo = fakeRepo({ findUnplayedScenario: vi.fn(async () => 'deja-la') })
     const app = await buildTestApp(repo)
@@ -142,6 +169,19 @@ describe('routes des challenges', () => {
     expect(res.json().score).toBeGreaterThan(0)
     const saved = vi.mocked(repo.saveJudgement).mock.calls[0][2]
     expect(saved[0].matched_issue_id).toBe(issue.id)
+  })
+
+  it('rédige les retours du juge dans la langue du joueur', async () => {
+    const repo = fakeRepo()
+    const app = await buildTestApp(repo)
+    await app.inject({
+      method: 'POST',
+      url: `/api/attempts/${ATTEMPT_ID}/submit`,
+      payload: { locale: 'en', comments: [{ file_path: issue.file, line_number: 1, text: 'Unrelated remark' }] },
+    })
+    const [, judgement, saved] = vi.mocked(repo.saveJudgement).mock.calls[0]!
+    expect(judgement.summary).toMatch(/^\[Simulated mode\]/)
+    expect(saved[0]!.feedback).toMatch(/does not contain an expected flaw/)
   })
 
   it('refuse un commentaire sur une ligne absente du diff', async () => {

@@ -33,7 +33,7 @@ import ChallengeLauncher from '../components/ChallengeLauncher'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import { getAuditorRank } from '../auditor-rank'
 import {
   getCategoryLabels,

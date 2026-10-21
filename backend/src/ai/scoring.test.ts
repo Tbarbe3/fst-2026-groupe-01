@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { MESSAGES } from './messages.js'
 import {
-  HEURISTIC_SUMMARY,
   candidateIssues,
   computeScore,
   heuristicJudge,
@@ -43,6 +43,7 @@ describe('sanitizeJudgeOutput', () => {
       { summary: 's', verdicts: [{ comment_index: 0, matched_issue_id: 'I1', clarity_score: 100, feedback: 'ok' }] },
       [comment(5)],
       GT,
+      'fr',
     )
     expect(result.verdicts[0]).toMatchObject({ matched_issue_id: null, clarity_score: 0 })
   })
@@ -52,6 +53,7 @@ describe('sanitizeJudgeOutput', () => {
       { summary: 's', verdicts: [{ comment_index: 0, matched_issue_id: 'I1', clarity_score: 400, feedback: 'ok' }] },
       [comment(20)],
       GT,
+      'fr',
     )
     expect(result.verdicts[0].clarity_score).toBe(100)
   })
@@ -61,20 +63,27 @@ describe('sanitizeJudgeOutput', () => {
       { summary: 's', verdicts: [{ comment_index: 0, matched_issue_id: '', clarity_score: 80, feedback: 'non' }] },
       [comment(20)],
       GT,
+      'fr',
     )
     expect(result.verdicts[0].matched_issue_id).toBeNull()
   })
 
   it('lève sur une sortie mal formée', () => {
-    expect(() => sanitizeJudgeOutput({ verdicts: 'x' }, [comment(20)], GT)).toThrow()
+    expect(() => sanitizeJudgeOutput({ verdicts: 'x' }, [comment(20)], GT, 'fr')).toThrow()
   })
 })
 
 describe('heuristicJudge', () => {
   it('associe par la ligne seule et annonce le mode dégradé', () => {
-    const result = heuristicJudge([comment(41), comment(99)], GT)
-    expect(result.summary).toBe(HEURISTIC_SUMMARY)
+    const result = heuristicJudge([comment(41), comment(99)], GT, 'fr')
+    expect(result.summary).toBe(MESSAGES.fr.heuristicSummary)
     expect(result.verdicts.map((v) => v.matched_issue_id)).toEqual(['I2', null])
+  })
+
+  it('rédige ses retours dans la langue du joueur', () => {
+    const result = heuristicJudge([comment(99)], GT, 'en')
+    expect(result.summary).toBe(MESSAGES.en.heuristicSummary)
+    expect(result.verdicts[0]!.feedback).toBe(MESSAGES.en.heuristicMissed)
   })
 })
 

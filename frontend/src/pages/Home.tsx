@@ -22,7 +22,7 @@ import {
 import { authClient } from '../auth'
 import DiffViewer from '../components/DiffViewer'
 import { scrollToSection } from '../hooks/useSectionHref'
-import { getDemoScenarios, getSupportedLanguages, useI18n } from '../i18n'
+import { getDemoScenarios, getSupportedLanguages, useI18n } from '@/i18n'
 
 export default function Home() {
   const { locale, t } = useI18n()

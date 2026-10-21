@@ -26,7 +26,7 @@ import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import ReviewHelp from '../components/ReviewHelp'
 import { describeError } from '../errors/network-error'
-import { useI18n } from '../i18n'
+import { useI18n } from '@/i18n'
 import {
   getCategoryLabels,
   getDifficultyLabels,

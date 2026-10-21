@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { challengesApi } from '../../api/challenges'
+import { challengesApi } from '@/api/challenges.ts'
 import Dashboard from '../Dashboard'
 
 vi.mock('../../api/challenges', async (importOriginal) => {

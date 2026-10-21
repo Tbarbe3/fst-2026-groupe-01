@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { applyLocaleToDocument } from '@/i18n'
 import { ApiError, challengesApi } from './challenges'
 
 function mockFetch(status: number, body: unknown) {
@@ -20,7 +21,7 @@ describe('challengesApi', () => {
     await expect(challengesApi.create(body)).resolves.toEqual({ attemptId: 'a1' })
     expect(fetchMock).toHaveBeenCalledWith('/api/challenges', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, locale: 'fr' }),
       headers: { 'content-type': 'application/json' },
     })
   })
@@ -55,5 +56,26 @@ describe('traduction des erreurs de l’API', () => {
   it('explique la limite de générations atteinte', async () => {
     mockFetch(429, { message: 'Rate limit exceeded, retry in 1 hour' })
     await expect(challengesApi.create({ mystery: true })).rejects.toThrow(/Trop de challenges/)
+  })
+})
+
+describe('langue des contenus générés', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    applyLocaleToDocument('fr')
+  })
+
+  it('transmet la langue de l’interface à la création et à la soumission', async () => {
+    applyLocaleToDocument('en')
+    const fetchMock = mockFetch(200, { attemptId: 'a1' })
+
+    await challengesApi.create({ mystery: true })
+    await challengesApi.submit('a1', [])
+
+    const bodies = fetchMock.mock.calls.map(([, init]) => JSON.parse(init.body))
+    expect(bodies).toEqual([
+      { mystery: true, locale: 'en' },
+      { comments: [], locale: 'en' },
+    ])
   })
 })

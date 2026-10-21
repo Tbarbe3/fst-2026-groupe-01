@@ -18,30 +18,35 @@
 
 ## Parcours utilisateur
 
-### 1. Écran d'authentification (/login, /register)
-* Connexion par identifiant unique / mot de passe ou via OAuth GitHub.
-* Création et persistance sécurisée de la session utilisateur.
+L'interface est disponible en français et en anglais (drapeau dans la barre de navigation pour les visiteurs, paramètres du compte une fois connecté), en thème clair ou sombre. Les scénarios et les retours du juge sont rédigés dans la langue de l'interface.
 
-### 2. Écran Hub & Sélection du challenge (/dashboard)
-* Grille des challenges filtrables par :
-  * **Langage :** TypeScript, Python, Go, Rust, Java, C#, PHP, etc.
+### 1. Accueil (/)
+* Présentation du concept, démo interactive d'une revue de code, langages couverts et méthode.
+
+### 2. Authentification (/login, /register)
+* Inscription et connexion par e-mail et mot de passe (Better Auth), session persistée par cookie.
+* Politique de mot de passe : 8 caractères minimum, avec minuscule, majuscule, chiffre et symbole.
+
+### 3. Tableau de bord (/dashboard)
+* Lanceur de challenge filtrable par :
+  * **Langage :** TypeScript, Python, Go, Java, PHP, Rust, C#.
   * **Difficulté :** niveaux 1 à 5 (1 : faute de syntaxe, 2 : bug évident, 3 : anomalie visible, 4 : anomalies cachées, 5 : expert).
-  * **Type d'erreur :** Sécurité (OWASP), Performance, Robustesse/Architecture, Accessibilité, Logique métier.
-* **Bouton « Mode Mystère » (Aléatoire) :** Déclenche la génération d'un scénario sans dévoiler le niveau ni le type d'erreur au préalable pour forcer un audit à l'aveugle.
-* Tableau de bord personnel avec courbe de progression temporelle et taux de réussite par catégorie.
+  * **Type d'erreur :** Sécurité (OWASP), Performance, Robustesse/Architecture, Concurrence, Logique métier.
+* **Mode Mystère :** tire au hasard le langage, la difficulté et le type d’erreur ; la difficulté et le type restent masqués jusqu’au débriefing.
+* Historique des revues regroupé par catégorie, courbe de progression, statistiques (nombre, moyenne, meilleure et dernière note).
+* **Rang d'auditeur**, selon le nombre de revues terminées : Novice (0), Apprenti (5), Confirmé (10), Senior (20).
+* Paramètres du compte : photo, pseudo, mot de passe, langue, thème et suppression définitive du compte (confirmée par mot de passe).
 
-### 3. Écran Revue de Code façon GitHub PR (/review/:challengeId)
-* **Contexte métier :** Faux ticket Jira / GitHub Issue explicitant l'intention initiale de la PR.
-* **Diff viewer :** Affichage des fichiers modifiés avec coloration syntaxique, ajouts en vert et suppressions en rouge.
-* **Interaction inline :** Clic direct sur une ligne précise du diff pour ouvrir une zone de commentaire, formuler l'anomalie détectée et valider la soumission via un bouton *Submit Review*.
+### 4. Revue de code façon GitHub PR (/review/:challengeId)
+* **Contexte métier :** faux ticket expliquant l'intention de la PR, et persona de l'auteur.
+* **Diff viewer :** fichiers modifiés, ajouts et suppressions signalés par la couleur et par les symboles `+` / `−`.
+* **Commentaires inline :** clic sur une ligne (ou sur son bouton `+`) pour rédiger une remarque, modifiable et supprimable. Les brouillons survivent à un rechargement.
+* Guide en quatre étapes, panneau d'aide ouvert d'office à la première partie, et confirmation avant d'approuver une PR sans aucune remarque.
 
-### 4. Écran Débriefing & Évaluation (/review/:challengeId/result)
-* Note globale sur 100 décomposée en métriques claires (failles identifiées, faux positifs, précision de l'explication).
-* Comparatif structuré :
-  * Le commentaire formulé par l'utilisateur.
-  * L'analyse critique du juge IA.
-  * La solution attendue (*Ground Truth*) accompagnée du diff corrigé.
-* Sauvegarde automatique des résultats dans l'historique du profil.
+### 5. Débriefing (/review/:challengeId/result)
+* Note sur 100 décomposée : anomalies trouvées, qualité des explications, précision (faux positifs).
+* Pour chaque anomalie attendue : statut trouvée / manquée, remarque du joueur, avis du juge et correctif attendu sous forme de diff.
+* Remarques hors cible listées à part ; résultat conservé dans l'historique.
 
 ---
 
@@ -52,114 +57,84 @@ User (1) ───────────< ReviewAttempt (N) >─────�
                              v (1:N)                         │ (créé par)
                        UserComment (N)                   User (0..1)
 
-* **User**
-  * `id` (UUID, Clé primaire)
-  * `username` (string, unique)
-  * `password_hash` (string)
-  * `created_at` (timestamp)
+* **User** (table `user` de Better Auth, accompagnée de `session`, `account` et `verification`)
+  * `id` (text, clé primaire)
+  * `name` (pseudo), `email` (unique), `image` (photo de profil en data URL)
+  * `created_at`, `updated_at`
 
-* **Scenario** (généré dynamiquement par l'IA au premier appel, puis stocké définitivement en base) :
-  * `id` (UUID, Clé primaire)
-  * `created_by_user_id` (UUID, FK nullable vers User)
-  * `title` (string : ex. "Fix: Refactorisation du module de paiement et session")
-  * `ticket_context` (text : description du ticket précisant l'objectif fonctionnel)
-  * `language` (enum/string : typescript, python, go, rust, etc.)
+* **Scenario** (généré par l'IA au premier besoin, puis réutilisé pour les autres joueurs) :
+  * `id` (UUID, clé primaire)
+  * `created_by_user_id` (FK nullable vers User)
+  * `title`, `ticket_context`
+  * `language` (typescript, python, go, java, php, rust, csharp)
   * `difficulty` (SMALLINT de 1 à 5)
   * `error_category` (enum : security_owasp, performance, architecture, race_condition, business_logic)
-  * `persona` (JSON : {"name": "Kevin", "archetype": "junior_pressé", "bio": "Fait confiance aveuglément à Copilot"})
-  * `diff_content` (text : patch Git unifié ou structure JSON des fichiers modifiés)
-  * `ground_truth` (JSON : liste de contrôle des anomalies attendues avec localisation, criticité et correctif idéal)
-  * `created_at` (timestamp)
+  * `locale` (fr | en : langue de rédaction des textes, celle de l'interface du joueur)
+  * `persona` (JSONB : `{"name", "archetype", "bio"}`)
+  * `diff_content` (JSON sérialisé des fichiers et lignes du diff, numéros de ligne calculés par le serveur)
+  * `ground_truth` (JSONB : anomalies attendues avec fichier, lignes, criticité, explication et correctif)
+  * `source` (`ai` ou `seed` pour le catalogue de repli), `model`
+  * `created_at`
 
-* **ReviewAttempt** (historique d'une tentative sur un scénario) :
-  * `id` (UUID, Clé primaire)
-  * `user_id` (UUID, FK vers User)
-  * `scenario_id` (UUID, FK vers Scenario)
-  * `score` (integer : 0 à 100)
-  * `score_breakdown` (JSONB : {"found_criticals": 1, "total_criticals": 1, "false_positives": 0, "reasoning_quality": 85})
-  * `ai_summary` (text : synthèse pédagogique globale rédigée par l'évaluateur)
-  * `created_at` (timestamp : horodatage garantissant le tracé de la courbe de progression)
+* **ReviewAttempt** (une partie d'un joueur sur un scénario) :
+  * `id`, `user_id`, `scenario_id`
+  * `status` (`in_progress` | `submitted`), `is_mystery`
+  * `score` (0 à 100), `score_breakdown` (JSONB : trouvées, total, faux positifs, qualité des explications, détail des points)
+  * `ai_summary` (synthèse du juge), `judged_by` (`ai` | `heuristic`)
+  * `created_at`, `submitted_at`
 
-* **UserComment** (détail des annotations soumises lors d'une tentative) :
-  * `id` (UUID, Clé primaire)
-  * `attempt_id` (UUID, FK vers ReviewAttempt)
-  * `file_path` (string)
-  * `line_number` (integer)
-  * `user_text` (text : explication rédigée par l'utilisateur)
-  * `matched_ground_truth` (boolean : validation de la ligne par le juge)
-  * `eval_feedback` (text : appréciation spécifique sur la pertinence de l'argumentaire)
+* **UserComment** (remarques soumises lors d'une partie) :
+  * `id`, `attempt_id`, `file_path`, `line_number`, `user_text`
+  * `matched_ground_truth`, `matched_issue_id` (anomalie reconnue, ou null pour un faux positif)
+  * `clarity_score` (0 à 100), `eval_feedback` (avis du juge)
+
+Supprimer un compte supprime en cascade ses parties et ses remarques ; les scénarios qu'il a fait générer restent disponibles pour les autres joueurs.
 
 ---
 
 ## Brique IA
 
-### Brique 1 : Le Générateur de Scénario (Création du challenge)
+Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simulé** : scénarios tirés d'un catalogue écrit à la main en français et en anglais (`mock-catalog.ts`), juge sans IA, aucun jeton consommé.
 
-* **Rôle / Usage :** Rédige le contexte du ticket, produit un diff réaliste contenant 1 à 3 anomalies ciblées et formalise la Ground Truth de référence.
-* **Modèle :** Gemini 2.5 Flash.
-* **Entrées :**
-  * Langage choisi (ex. TypeScript)
-  * Niveau de difficulté (ex. Junior)
-  * Thématique / Catégorie d'erreur (ex. Sécurité OWASP) ou flag `random=true` (Mode Mystère)
-  * Archétype de Persona (ex. Junior pressé qui néglige les cas d'erreur)
-* **Sortie attendue (JSON strict) :**
-  {
-    "title": "PR #142: Implémentation du webhook Stripe",
-    "ticket_context": "Nous devons écouter les événements Stripe checkout.session.completed...",
-    "persona": {
-      "name": "Jordan",
-      "style": "Code rapidement, oublie la validation de signature"
-    },
-    "diff_content": "diff --git a/src/stripe.ts...",
-    "ground_truth": [
+### Brique 1 : le générateur de scénario
+
+* **Rôle :** rédiger le ticket et le persona, produire un diff réaliste contenant les anomalies demandées et la ground truth de référence.
+* **Modèle :** Gemini 2.5 Flash (`GEMINI_MODEL_GENERATOR`), sortie JSON contrainte par schéma.
+* **Entrées :** langage, niveau de 1 à 5 (avec un guide par niveau : du point-virgule manquant au niveau 1 jusqu'aux anomalies visibles seulement à l'exécution au niveau 5), catégorie d'erreur, langue de rédaction.
+* **Sortie :** fichiers découpés en blocs de lignes typées (`context`, `add`, `delete`), chaque ligne fautive portant un `issue_ref` vers une anomalie. Le modèle ne donne aucun numéro de ligne absolu : le serveur les calcule, un LLM comptant mal.
+
       {
-        "file": "src/stripe.ts",
-        "line_number": 28,
-        "type": "security_owasp",
-        "severity": "critical",
-        "expected_issue": "Signature Stripe non vérifiée",
-        "why": "L'endpoint traite le payload JSON brut sans vérifier le header stripe-signature avec le secret de signature.",
-        "ideal_fix": "stripe.webhooks.constructEvent(rawBody, sig, endpointSecret)"
+        "title": "PR #142: Receiving Stripe webhooks",
+        "ticket_context": "[PAY-218] When a customer completes a payment…",
+        "persona": { "name": "Jordan", "archetype": "rushed_junior", "bio": "Ships fast…" },
+        "files": [{ "path": "src/routes/stripe-webhook.ts", "hunks": [{ "start_line": 1, "lines": [
+          { "kind": "add", "text": "  const event = req.body", "issue_ref": "I1" }
+        ] }] }],
+        "issues": [{ "id": "I1", "type": "security_owasp", "severity": "critical",
+          "expected_issue": "…", "why": "…", "ideal_fix": "…", "fixed_lines": ["…"] }]
       }
-    ]
-  }
-* **Repli si échec (Fallback) :**
-  1. Relance unique immédiate avec une température abaissée.
-  2. Si l'API reste injoignable, bascule transparente sur un scénario d'urgence préexistant en base de données (seed statique).
 
-### Brique 2 : Le Juge Évaluateur (Correction & Scoring)
+* **Validation :** `scenario-builder.ts` refuse une sortie incohérente (anomalie sans ligne, ligne fautive hors des lignes ajoutées, commentaire de code qui trahit la réponse, diff trop long…).
+* **Repli :** une seconde tentative plus froide (température 0,9 puis 0,4), puis le catalogue statique.
 
-* **Rôle / Usage :** Confrontation sémantique entre les signalements de l'utilisateur et la Ground Truth préenregistrée.
-* **Modèle :** Gemini 2.5 Flash (température 0, mode Structured Output).
-* **Économie de tokens :** Le modèle n'ingère pas la totalité du diff ; il reçoit exclusivement la Ground Truth et les commentaires de l'utilisateur (ligne ciblée + justification textuelle).
-* **Entrées :**
-  * `ground_truth` (extrait du champ JSON du Scenario)
-  * `user_comments` (tableau d'objets `[{"line_number": 28, "text": "Tu as oublié de vérifier la signature du webhook !"}]`)
-* **Sortie attendue (JSON strict) :**
-  {
-    "score": 95,
-    "summary": "Excellente détection. Vous avez repéré la faille d'authentification critique immédiatement.",
-    "detections": [
-      {
-        "line_number": 28,
-        "matched": true,
-        "clarity_score": 90,
-        "feedback": "C'est exactement ça : sans validation du secret, n'importe qui peut forger de faux paiements."
-      }
-    ],
-    "false_positives": [],
-    "missed_issues": []
-  }
-* **Repli si échec (Fallback) :**
-  * Algorithme heuristique sans LLM basé sur la stricte intersection numérique des lignes (`user_comment.line_number === ground_truth.line_number`).
-  * Attribution d'un score de secours assorti du message : "Analyse sémantique temporairement indisponible, résultat calculé d'après les lignes pointées."
+### Brique 2 : le juge évaluateur
+
+* **Rôle :** juger la justesse et la clarté des explications du joueur.
+* **Modèle :** Gemini 2.5 Flash (`GEMINI_MODEL_JUDGE`), température 0, sortie JSON contrainte.
+* **Économie de jetons :** le juge ne reçoit pas le diff, seulement la ground truth et, pour chaque remarque, la ligne commentée et son texte.
+* **Garde-fous :**
+  * La détection est décidée par le serveur (même fichier, ±2 lignes) : le juge ne peut valider qu'une anomalie candidate, jamais en inventer une. Une injection de prompt dans un commentaire ne transforme donc pas un faux positif en trouvaille.
+  * La note est calculée par le serveur, jamais par le modèle : détection pondérée par la criticité (60 points), clarté des explications (30), précision (10, −5 par faux positif).
+* **Sortie :** une synthèse et, par remarque, `matched_issue_id`, `clarity_score` et `feedback`, dans la langue du joueur.
+* **Repli :** heuristique par lignes seule (clarté forfaitaire), signalée sur le débriefing. Une revue vide n'appelle pas le juge.
 
 ---
 
 ## Stack technique
 
-* **Frontend :** React 19 + Vite + TypeScript + Tailwind CSS. Monaco Editor pour le diff viewer de l'écran de revue. Vite plutôt que Next.js : l'API vivant dans un service Fastify distinct, le SSR n'apporterait qu'un second runtime Node à déployer et la tentation de disperser la logique métier dans des route handlers.
-* **API Backend :** Node.js avec Fastify en TypeScript, pour une empreinte mémoire réduite et une conteneurisation directe.
+* **Frontend :** React 19 + Vite + TypeScript, React Router, CSS natif avec variables (thèmes clair et sombre), Recharts pour la courbe de progression, i18n maison français / anglais (`frontend/src/i18n/`). Le diff viewer est un composant maison, accessible au clavier. Les pages lourdes (tableau de bord, revue, débriefing) sont chargées à la demande. Vite plutôt que Next.js : l'API vivant dans un service Fastify distinct, le SSR n'apporterait qu'un second runtime Node à déployer et la tentation de disperser la logique métier dans des route handlers.
+* **API Backend :** Node.js avec Fastify en TypeScript, pour une empreinte mémoire réduite et une conteneurisation directe. Authentification par Better Auth, limitation de débit sur l'authentification et la génération de scénarios. Les erreurs métier renvoient un `code` stable que le front traduit.
+* **Tests :** Vitest des deux côtés (Testing Library côté front). Un test vérifie que les dictionnaires français et anglais déclarent les mêmes clés et les mêmes paramètres.
 * **Base de données :** PostgreSQL (gestion relationnelle native des comptes et tentatives, colonnes JSONB pour la ground truth et les résultats).
 * **Hébergement :** Stack conteneurisée via Docker Compose (API Node.js, PostgreSQL, et Nginx pour servir le bundle statique) déployée sur VPS dédié, derrière un Traefik mutualisé qui assure le reverse proxy et les certificats Let's Encrypt.
 
@@ -170,9 +145,12 @@ User (1) ───────────< ReviewAttempt (N) >─────�
     │   ├── Dockerfile            # build Vite → Nginx (image de prod)
     │   └── nginx.conf            # fallback SPA + cache des assets
     ├── backend/                  # Fastify + TS — port 3000, routes préfixées /api
-    │   ├── sql/                  # schéma, appliqué au démarrage de l'API
+    │   ├── src/ai/               # générateur, juge, scoring, catalogue simulé
+    │   ├── sql/                  # scripts SQL rejoués au démarrage de l'API
     │   └── Dockerfile            # build multi-étapes, exécution non-root
     ├── scripts/
+    │   ├── check-setup.mjs       # vérifie que le poste est prêt (npm run check)
+    │   ├── check-contrast.mjs    # contrastes WCAG de la palette
     │   └── create-db-tunnel-user.sh   # compte SSH restreint pour accéder à la base
     ├── docker-compose.yml        # stack unique, profils `dev` et `prod`
     ├── package.json              # raccourcis de dev — pas un workspace
@@ -230,9 +208,9 @@ L'équipe partage la base du serveur, il n'y a donc pas de conteneur Postgres à
 
 ### Schéma et migrations
 
-En attendant l'ORM, `backend/sql/*.sql` est appliqué dans l'ordre alphabétique **au démarrage de l'API**, dans une transaction par fichier. Aucune commande à lancer : un `docker compose --profile prod up -d --build` suffit à créer le schéma.
+En attendant l'ORM, `backend/sql/*.sql` est appliqué dans l'ordre alphabétique **au démarrage de l'API**, dans une transaction par fichier. Chaque fichier est rejoué à chaque boot, donc tout doit rester idempotent — `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`.
 
-Contrainte qui en découle : chaque fichier est rejoué à chaque boot, donc tout doit rester idempotent — `CREATE TABLE IF NOT EXISTS`, `ON CONFLICT DO NOTHING`. C'est suffisant pour poser un schéma, pas pour le faire évoluer : renommer une colonne demandera un vrai outil de migration.
+**État actuel :** les scripts déjà exécutés sur la base partagée (`001_init`, `002_auth`, `003_domain`, `004_difficulty_levels`, `005_scenario_locale`) ont été retirés du dossier. Ils restent dans l'historique git (`git log --all -- backend/sql/`). Une base neuve, par exemple celle du profil `dev`, doit donc les recevoir à la main, dans l'ordre.
 
 ### Routage du frontend
 
@@ -240,20 +218,20 @@ React Router (`createBrowserRouter`), configuré dans `frontend/src/router.tsx` 
 
 | Route | Page | Accès |
 |---|---|---|
-| `/` | Redirige vers `/dashboard` | — |
+| `/` | `Home` (page d'accueil) | Tous |
 | `/login`, `/register` | `AuthPage` | Visiteurs seulement |
 | `/dashboard` | `Dashboard` | Authentifié |
 | `/review/:challengeId` | `Review` | Authentifié |
 | `/review/:challengeId/result` | `ReviewResult` | Authentifié |
 | `*` | `NotFound` | — |
 
-Deux gardes encadrent ces routes. `ProtectedRoute` redirige un visiteur non connecté vers `/login` en conservant la destination voulue dans `location.state`, et traite le cas d'une session reconnue mais sans utilisateur. `GuestRoute` écarte de `/login` un visiteur déjà authentifié.
+Toutes les pages partagent la même barre de navigation et le même pied de page (`SiteLayout`). Pour un visiteur, la barre propose les sections de l'accueil, la langue et le thème ; une fois connecté, l'accueil, le tableau de bord et le compte. Deux gardes encadrent ces routes. `ProtectedRoute` redirige un visiteur non connecté vers `/login` en conservant la destination voulue dans `location.state`, et traite le cas d'une session reconnue mais sans utilisateur. `GuestRoute` écarte de `/login` un visiteur déjà authentifié.
 
 Les liens profonds fonctionnent en production grâce au `try_files $uri $uri/ /index.html` de `frontend/nginx.conf` : sans lui, un rechargement sur `/dashboard` renverrait un 404 de Nginx. Les appels `/api` ne passent jamais par là, Traefik les route vers l'API avec une priorité supérieure.
 
 ### Authentification (Better Auth)
 
-Les routes `/api/auth/*` sont servies par Better Auth, dont le schéma est créé par `002_auth.sql` (tables `user`, `session`, `account`, `verification` — distinctes de la table `users` de démonstration).
+Les routes `/api/auth/*` sont servies par Better Auth (tables `user`, `session`, `account`, `verification`). Connexion par e-mail et mot de passe, changement de pseudo, de photo et de mot de passe, suppression du compte (`deleteUser`, confirmée par le mot de passe). La politique de mot de passe est appliquée côté serveur à l'inscription et au changement de mot de passe, et dupliquée côté front pour le confort.
 
 Deux variables conditionnent son fonctionnement en production, et l'API **refuse de démarrer** si elles sont mal réglées :
 
@@ -359,6 +337,8 @@ Pour `logs` en revanche il est inutile, nommer un service active son profil auto
 | `ADMINER_DOMAIN` | Le sous-domaine d'Adminer |
 | `ADMINER_BASIC_AUTH` | Sortie de `htpasswd -nbB <login> '<mot de passe>'`, **avec les `$` doublés** |
 | `BETTER_AUTH_SECRET` | `openssl rand -hex 32`. Obligatoire : l'API refuse de démarrer sans elle |
+| `GEMINI_API_KEY` | Clé créée sur https://aistudio.google.com/apikey. Vide : mode simulé, sans IA ni coût |
+| `AI_MODE` | Vide par défaut ; `mock` force le mode simulé même avec une clé |
 
 Deux pièges à ce niveau, tous deux silencieux :
 
