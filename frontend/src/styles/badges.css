@@ -1,0 +1,52 @@
+.hero-welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 1.25rem;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 1.75rem;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.4s ease;
+}
+
+.welcome-emoji {
+  font-size: 1.2rem;
+}
+
+.welcome-pseudo {
+  color: var(--link);
+  font-weight: 700;
+}
+
+.auth-top-nav {
+  margin-bottom: 1.25rem;
+}
+
+.btn-back-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.btn-back-home:hover {
+  color: var(--text);
+  transform: translateX(-2px);
+}
+
+.auth-brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth-brand-link:hover {
+  color: var(--link);
+}
