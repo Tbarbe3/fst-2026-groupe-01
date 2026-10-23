@@ -130,7 +130,7 @@ deux comptes peuvent porter le même. À décider si c'est acceptable.
 ### 13. ~~Écrans de revue de code~~ — fait (diff, commentaires en ligne, débriefing)
 
 `/review/:challengeId` et `/review/:challengeId/result` sont des pages
-d'attente. Le diff viewer (Monaco est installé), les commentaires en ligne
+d'attente. Le diff viewer, les commentaires en ligne
 et le débriefing restent à écrire.
 
 ### 14. ~~Brique IA sans fournisseur~~ — fait : Gemini + mode simulé, voir README

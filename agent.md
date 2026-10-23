@@ -10,7 +10,7 @@ Ce fichier sert de contexte de référence pour les assistants IA travaillant su
   2. Évaluer et noter les commentaires de l'utilisateur par rapport à la *Ground Truth*.
 
 ## Stack Technique
-- **Frontend :** React 19, Vite, TypeScript, Tailwind CSS, Monaco Editor (pour le diff viewer). Port : `5173`.
+- **Frontend :** React 19, Vite, TypeScript, CSS natif (`frontend/src/styles/`), diff viewer et graphique maison. Port : `5173`.
 - **Backend :** Node.js avec Fastify, TypeScript. Port : `3000`. Préfixe des routes : `/api`.
 - **Base de données :** PostgreSQL (relations et JSONB pour le scoring/ground truth).
 - **Déploiement :** Docker Compose (multi-profils `dev` et `prod`), Nginx, VPS, Traefik.
@@ -141,16 +141,15 @@ Priorité du projet, dont le sujet même est la relecture critique de code. Les 
 
 ### 6. Dépendances et vulnérabilités
 
-Deux `overrides` npm sont en place et **ne doivent pas être supprimés** sans vérifier l'amont au préalable :
+Un `override` npm est en place et **ne doit pas être supprimé** sans vérifier l'amont au préalable :
 
 | Projet | Override | Raison |
 |---|---|---|
-| `frontend` | `dompurify: ^3.4.16` | `monaco-editor@0.57.0`, qui est la dernière version, épingle `dompurify@3.4.15` exactement — une version visée par deux avis de XSS DOM |
 | racine | `shell-quote: ^1.11.0` | `concurrently` épingle `shell-quote@1.9.0`, vulnérable à une injection de commande (critique) |
 
-Dans les deux cas `npm audit fix` est impuissant : la dépendance est figée à une version exacte par le paquet parent, et aucune version plus récente de ce parent ne corrige le problème. L'`override` force la résolution vers la version corrigée, le saut étant mineur et compatible.
+`npm audit fix` y est impuissant : la dépendance est figée à une version exacte par le paquet parent, et aucune version plus récente de ce parent ne corrige le problème. L'`override` force la résolution vers la version corrigée, le saut étant mineur et compatible.
 
-À chaque mise à jour de `monaco-editor` ou de `concurrently`, vérifier si l'épinglage a été relevé en amont ; si oui, retirer l'`override` correspondant.
+À chaque mise à jour de `concurrently`, vérifier si l'épinglage a été relevé en amont ; si oui, retirer l'`override`.
 
 ### 7. Tests
 

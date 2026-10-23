@@ -51,7 +51,6 @@ describe('Review', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     localStorage.clear()
-    sessionStorage.clear()
     vi.mocked(challengesApi.get).mockResolvedValue(ATTEMPT)
     vi.mocked(challengesApi.submit).mockResolvedValue({ attemptId: 'a1', score: 80 })
   })
@@ -94,5 +93,23 @@ describe('Review', () => {
       { file_path: 'Cart.java', line_number: 2, text: 'Point-virgule manquant' },
     ])
     expect(await screen.findByText('Page Résultat')).toBeInTheDocument()
+  })
+
+  it('conserve les remarques non envoyées pour reprendre la partie plus tard', async () => {
+    const user = userEvent.setup()
+    const { unmount } = renderReview()
+
+    await user.click(await screen.findByText('sum += price'))
+    await user.type(screen.getByLabelText('Remarque sur la ligne 2'), 'Brouillon')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer la remarque' }))
+    unmount()
+
+    renderReview()
+    expect(await screen.findByRole('button', { name: 'Envoyer ma revue (1)' })).toBeInTheDocument()
+  })
+
+  it('permet de quitter la partie vers le tableau de bord', async () => {
+    renderReview()
+    expect(await screen.findByRole('link', { name: /Retour au tableau de bord/ })).toHaveAttribute('href', '/dashboard')
   })
 })

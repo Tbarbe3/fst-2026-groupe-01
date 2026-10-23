@@ -1,0 +1,311 @@
+.landing-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+.site-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-main .dashboard-page {
+  width: 100%;
+  flex: 1;
+}
+
+.landing-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  width: 100%;
+  height: 68px;
+  min-height: 68px;
+  max-height: 68px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+}
+
+.landing-header-inner {
+  max-width: 1320px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(1rem, 2.5vw, 2.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  box-sizing: border-box;
+}
+
+.landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.landing-brand:hover {
+  color: var(--text);
+}
+
+.brand-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--action-bg), #8b5cf6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  flex-shrink: 0;
+}
+
+.brand-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--link);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.25rem, 2vw, 2.25rem);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0.35rem 0.25rem;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--text);
+}
+
+.nav-link.active {
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+}
+
+/* Contour plutôt que fond plein : --danger est clair en thème sombre. */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--danger);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.danger-zone {
+  margin-top: 0.5rem;
+}
+
+.danger-zone-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.danger-zone-form .setting-actions {
+  justify-content: flex-end;
+}
+
+.landing-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.auth-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.btn-nav-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 40px;
+  min-width: 108px;
+  padding: 0 1rem;
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.btn-nav-login:hover {
+  background: var(--surface-raised);
+}
+
+.btn-nav-register {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 40px;
+  min-width: 128px;
+  padding: 0 1.25rem;
+  border-radius: 10px;
+  background: var(--action-bg);
+  color: var(--action-text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.btn-nav-register:hover {
+  background: var(--action-bg-hover);
+  transform: translateY(-1px);
+}
+
+.user-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.user-chip {
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: 40px;
+  padding: 0 0.95rem;
+  background: var(--surface-raised);
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.user-chip:hover {
+  background: var(--surface-raised-hover);
+}
+
+.user-chip-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--action-bg);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.user-chip-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-icon-nav {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.btn-icon-nav:hover {
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.btn-nav-logout:hover {
+  color: var(--danger);
+}
+
+.btn-flag svg {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--border);
+}

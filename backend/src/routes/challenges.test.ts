@@ -46,6 +46,7 @@ function fakeRepo(overrides: Partial<ChallengesRepo> = {}): ChallengesRepo {
     getAttempt: vi.fn(async () => attempt()),
     saveJudgement: vi.fn(async () => true),
     listSubmitted: vi.fn(async () => []),
+    listInProgress: vi.fn(async () => []),
     ...overrides,
   }
 }
@@ -107,6 +108,15 @@ describe('routes des challenges', () => {
     const app = await buildTestApp()
     const res = await app.inject({ method: 'POST', url: '/api/challenges', payload: { mystery: true, locale: 'de' } })
     expect(res.statusCode).toBe(400)
+  })
+
+  it('renvoie l’historique et les parties à reprendre', async () => {
+    const inProgress = [{ id: ATTEMPT_ID, title: 'PR', language: 'go', category: null, difficulty: null, isMystery: true, startedAt: '2026-10-22T08:00:00.000Z' }]
+    const repo = fakeRepo({ listInProgress: vi.fn(async () => inProgress) })
+    const app = await buildTestApp(repo)
+    const res = await app.inject({ method: 'GET', url: '/api/me/attempts' })
+    expect(res.json()).toEqual({ attempts: [], inProgress })
+    expect(repo.listInProgress).toHaveBeenCalledWith('u1')
   })
 
   it('réutilise un scénario existant sans appeler l’IA', async () => {

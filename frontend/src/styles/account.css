@@ -1,0 +1,248 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: var(--shadow);
+  animation: modalSlideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+/* Keyframe propre au modal : la variante de .auth-card part de 20px et
+   d'un état `opacity:0` posé par sa propre règle, pas par le keyframe. */
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  background: var(--surface-raised-hover);
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  margin-right: 1rem;
+}
+
+.setting-info label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.setting-info span {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.setting-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-text {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.btn-text:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.btn-primary-sm {
+  background: var(--action-bg);
+  border: none;
+  color: var(--action-text);
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary-sm:hover:not(:disabled) {
+  background: var(--action-bg-hover);
+}
+
+.btn-primary-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.setting-actions .btn-text,
+.setting-actions .btn-primary-sm,
+.setting-row > .btn-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 36px;
+  line-height: 1;
+}
+
+.btn-text-danger {
+  color: var(--danger);
+}
+
+.setting-avatar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.avatar-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--border);
+  font-weight: 700;
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.setting-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.choice-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.choice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-control);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+/* L'état actif ne repose pas que sur la couleur : bordure épaisse et graisse. */
+.choice-btn[aria-pressed='true'] {
+  border: 2px solid var(--link);
+  color: var(--text);
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .setting-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .setting-info {
+    margin-right: 0;
+  }
+
+  .setting-actions,
+  .choice-group {
+    flex-wrap: wrap;
+  }
+}

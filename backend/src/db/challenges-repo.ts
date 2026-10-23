@@ -44,6 +44,17 @@ export interface AttemptSummary {
   submittedAt: string
 }
 
+/** Partie ouverte mais pas encore soumise, que le joueur peut reprendre. */
+export interface AttemptInProgressSummary {
+  id: string
+  title: string
+  language: string
+  category: string | null
+  difficulty: string | null
+  isMystery: boolean
+  startedAt: string
+}
+
 export interface ChallengesRepo {
   findUnplayedScenario(userId: string, params: GenerationParams): Promise<string | null>
   insertScenario(userId: string, outcome: { scenario: BuiltScenario; params: GenerationParams; source: string; model: string }): Promise<string>
@@ -56,6 +67,7 @@ export interface ChallengesRepo {
     comments: (SubmittedComment & CommentVerdict)[],
   ): Promise<boolean>
   listSubmitted(userId: string): Promise<AttemptSummary[]>
+  listInProgress(userId: string): Promise<AttemptInProgressSummary[]>
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -191,6 +203,27 @@ export function createChallengesRepo(pool: pg.Pool): ChallengesRepo {
       } finally {
         client.release()
       }
+    },
+
+    async listInProgress(userId) {
+      const { rows } = await pool.query(
+        `SELECT a.id, a.is_mystery, a.created_at, s.title, s.language,
+                s.error_category::text AS category, s.difficulty::text AS difficulty
+           FROM review_attempts a JOIN scenarios s ON s.id = a.scenario_id
+          WHERE a.user_id = $1 AND a.status = 'in_progress'
+          ORDER BY a.created_at DESC`,
+        [userId],
+      )
+      // Le mode Mystère ne dévoile ni la difficulté ni la catégorie avant la soumission.
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        language: r.language,
+        category: r.is_mystery ? null : r.category,
+        difficulty: r.is_mystery ? null : r.difficulty,
+        isMystery: r.is_mystery,
+        startedAt: r.created_at.toISOString(),
+      }))
     },
 
     async listSubmitted(userId) {

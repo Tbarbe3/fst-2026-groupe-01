@@ -13,6 +13,8 @@ export const authClientMock = {
   useSession: vi.fn(),
   signOut: vi.fn(),
   deleteUser: vi.fn(),
+  updateUser: vi.fn(),
+  changePassword: vi.fn(),
   signIn: { email: vi.fn() },
   signUp: { email: vi.fn() },
 }

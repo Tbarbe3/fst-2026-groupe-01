@@ -115,7 +115,13 @@ export const challengesRoutes: FastifyPluginAsync<ChallengesRoutesOptions> = asy
     },
   )
 
-  app.get('/me/attempts', async (request) => ({ attempts: await repo.listSubmitted(request.userId) }))
+  app.get('/me/attempts', async (request) => {
+    const [attempts, inProgress] = await Promise.all([
+      repo.listSubmitted(request.userId),
+      repo.listInProgress(request.userId),
+    ])
+    return { attempts, inProgress }
+  })
 
   app.get<{ Params: { id: string } }>('/attempts/:id', async (request, reply) => {
     const attempt = await repo.getAttempt(request.params.id, request.userId)
