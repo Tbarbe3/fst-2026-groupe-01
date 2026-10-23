@@ -86,6 +86,16 @@ export interface AttemptSummary {
   submittedAt: string
 }
 
+export interface AttemptInProgressSummary {
+  id: string
+  title: string
+  language: string
+  category: string | null
+  difficulty: string | null
+  isMystery: boolean
+  startedAt: string
+}
+
 export type ChallengeRequest =
   | { mystery: true }
   | { language: string; difficulty: string; category: string }
@@ -136,5 +146,6 @@ export const challengesApi = {
       `/attempts/${encodeURIComponent(attemptId)}/submit`,
       { method: 'POST', body: JSON.stringify({ comments, locale: getCurrentLocale() }) },
     ),
-  history: () => request<{ attempts: AttemptSummary[] }>('/me/attempts'),
+  history: () =>
+    request<{ attempts: AttemptSummary[]; inProgress: AttemptInProgressSummary[] }>('/me/attempts'),
 }

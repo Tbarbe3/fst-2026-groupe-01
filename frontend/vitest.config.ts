@@ -22,5 +22,8 @@ export default defineConfig({
     // projet contient une espace (« Prog Web »). Les threads partagent le
     // même processus et démarrent aussi beaucoup plus vite avec jsdom.
     pool: 'threads',
+    // Chaque fichier monte son propre jsdom : au-delà, une machine chargée
+    // dépasse le délai de démarrage des workers.
+    maxWorkers: 2,
   },
 })

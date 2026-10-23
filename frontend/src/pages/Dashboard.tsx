@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Code2,
-  LayoutDashboard,
+  PlayCircle,
   Plus,
   ShieldAlert,
   Sparkles,
@@ -17,24 +17,16 @@ import {
   TrendingUp,
   Zap,
 } from 'lucide-react'
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
 
-import { challengesApi, type AttemptSummary } from '../api/challenges'
-import { authClient } from '../auth'
+import { challengesApi, type AttemptInProgressSummary, type AttemptSummary } from '../api/challenges'
 import ChallengeLauncher from '../components/ChallengeLauncher'
+import ScoreChart from '../components/ScoreChart'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeNetworkError } from '../errors/network-error'
 import { useI18n } from '@/i18n'
-import { getAuditorRank } from '../auditor-rank'
+import { getAuditorRank, PASSING_SCORE } from '../auditor-rank'
+import { SCORE_VERDICT_KEYS, scoreLevel } from '../score-level'
 import {
   getCategoryLabels,
   getDifficultyLabels,
@@ -44,12 +36,11 @@ import {
 
 export default function Dashboard() {
   const { locale, t, formatDate } = useI18n()
-  const { data: session } = authClient.useSession()
-  const displayName = session?.user?.name || session?.user?.email || ''
 
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null)
   const [expandedTheme, setExpandedTheme] = useState<string | null>(null)
   const [history, setHistory] = useState<AttemptSummary[] | null>(null)
+  const [inProgress, setInProgress] = useState<AttemptInProgressSummary[]>([])
   const [historyError, setHistoryError] = useState('')
 
   const categoryLabels = getCategoryLabels(locale)
@@ -59,9 +50,10 @@ export default function Dashboard() {
     let cancelled = false
     challengesApi
       .history()
-      .then(({ attempts }) => {
+      .then(({ attempts, inProgress }) => {
         if (cancelled) return
         setHistory(attempts)
+        setInProgress(inProgress)
         setExpandedTheme(attempts[attempts.length - 1]?.category ?? null)
       })
       .catch((err: unknown) => {
@@ -85,7 +77,7 @@ export default function Dashboard() {
   const chartData = [...filteredHistory]
     .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime())
     .map((s) => ({
-      name: formatDate(s.submittedAt, { day: 'numeric', month: 'short' }),
+      label: formatDate(s.submittedAt, { day: 'numeric', month: 'short' }),
       score: s.score,
     }))
 
@@ -97,18 +89,15 @@ export default function Dashboard() {
   const bestScore = totalScenarios > 0 ? Math.max(...filteredHistory.map((s) => s.score)) : 0
   const lastScore = totalScenarios > 0 ? filteredHistory[filteredHistory.length - 1].score : 0
 
-  const rankInfo = getAuditorRank(allHistory.length, averageScore, t)
+  const rankInfo = getAuditorRank(
+    allHistory.map((attempt) => attempt.score),
+    t,
+  )
 
   return (
     <div className="dashboard-page">
       <section className="dashboard-hero-section" aria-labelledby="dashboard-title">
         <div className="dashboard-hero-container">
-          <div className="hero-welcome-badge" role="status">
-            <LayoutDashboard size={15} aria-hidden="true" />
-            <span>
-              {t('dashboard.welcomeBadge')} <strong className="welcome-pseudo">{displayName}</strong>
-            </span>
-          </div>
           <h1 id="dashboard-title" className="hero-title">
             {t('dashboard.heroTitle')} <span className="hero-title-highlight">{t('dashboard.heroTitleHighlight')}</span>
           </h1>
@@ -142,6 +131,37 @@ export default function Dashboard() {
               <Plus size={16} aria-hidden="true" />
               <span>{t('dashboard.newChallenge')}</span>
             </button>
+
+            {inProgress.length > 0 && (
+              <section className="in-progress" aria-labelledby="in-progress-title">
+                <h3 id="in-progress-title" className="in-progress-title">
+                  <PlayCircle size={16} aria-hidden="true" /> {t('dashboard.inProgressTitle')}
+                </h3>
+                <ul className="in-progress-list">
+                  {inProgress.map((attempt) => (
+                    <li key={attempt.id}>
+                      <Link to={`/review/${attempt.id}`} className="in-progress-item">
+                        <span className="scenario-title">{attempt.title}</span>
+                        <span className="scenario-meta">
+                          <span className="meta-tag">
+                            <Code2 size={12} aria-hidden="true" /> {label(LANGUAGE_LABELS, attempt.language, locale)}
+                          </span>
+                          <span className="meta-tag">
+                            {attempt.isMystery ? t('review.mysteryMode') : label(difficultyLabels, attempt.difficulty, locale)}
+                          </span>
+                          <span className="scenario-date">
+                            {formatDate(attempt.startedAt, { day: 'numeric', month: 'short' })}
+                          </span>
+                        </span>
+                        <span className="in-progress-resume">
+                          {t('dashboard.resume')} <ArrowRight size={14} aria-hidden="true" />
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <div className="scenario-list">
               {history === null && !historyError && (
@@ -199,9 +219,7 @@ export default function Dashboard() {
                             <div className="scenario-header">
                               <div className="scenario-title">{scenario.title}</div>
                               <div
-                                className={`scenario-score ${
-                                  scenario.score >= 80 ? 'high' : scenario.score >= 60 ? 'medium' : 'low'
-                                }`}
+                                className={`scenario-score ${scoreLevel(scenario.score)}`}
                               >
                                 {scenario.score}%
                               </div>
@@ -261,20 +279,14 @@ export default function Dashboard() {
                 <>
                   <div className="score-hero-block">
                     <div
-                      className={`score-badge-circle ${
-                        selectedScenario.score >= 80 ? 'high' : selectedScenario.score >= 60 ? 'medium' : 'low'
-                      }`}
+                      className={`score-badge-circle ${scoreLevel(selectedScenario.score)}`}
                     >
                       <span className="score-number">{selectedScenario.score}</span>
                       <span className="score-pct">%</span>
                     </div>
                     <div className="score-hero-text">
                       <div className="score-badge-label">
-                        {selectedScenario.score >= 80
-                          ? t('dashboard.excellentAnalysis')
-                          : selectedScenario.score >= 60
-                            ? t('dashboard.goodAnalysis')
-                            : t('dashboard.needsWork')}
+                        {t(SCORE_VERDICT_KEYS[scoreLevel(selectedScenario.score)])}
                       </div>
                       <h3>{t('dashboard.evalScore')}</h3>
                       <p>{t('dashboard.scoreHelp')}</p>
@@ -382,7 +394,7 @@ export default function Dashboard() {
                 <span className="chart-count">
                   {t('dashboard.pointCount', {
                     count: filteredHistory.length,
-                    plural: filteredHistory.length > 1 ? (locale === 'fr' ? 's' : 's') : '',
+                    s: filteredHistory.length > 1 ? 's' : '',
                   })}
                 </span>
               )}
@@ -396,39 +408,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="chart-container">
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--chart-blue)" stopOpacity={0.7} />
-                        <stop offset="95%" stopColor="var(--chart-blue)" stopOpacity={0.05} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                    <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickMargin={8} />
-                    <YAxis stroke="var(--text-muted)" fontSize={11} domain={[0, 100]} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'var(--surface)',
-                        borderColor: 'var(--border)',
-                        borderRadius: '8px',
-                        boxShadow: 'var(--shadow)',
-                      }}
-                      itemStyle={{ color: 'var(--text)' }}
-                      labelStyle={{ color: 'var(--text-muted)', fontWeight: 600 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="score"
-                      stroke="var(--chart-blue)"
-                      strokeWidth={2.5}
-                      fillOpacity={1}
-                      fill="url(#colorScore)"
-                      dot={{ r: 3, fill: 'var(--chart-blue)' }}
-                      activeDot={{ r: 5, fill: 'var(--action-bg)' }}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <ScoreChart points={chartData} title={t('dashboard.scoreEvolution')} />
               </div>
             )}
 
@@ -441,6 +421,7 @@ export default function Dashboard() {
                 <div className="rank-progress-fill" style={{ width: `${rankInfo.progress}%` }} />
               </div>
               <p className="rank-desc">{rankInfo.desc}</p>
+              <p className="rank-rule">{t('dashboard.rankRule', { min: PASSING_SCORE })}</p>
             </div>
           </div>
         </div>

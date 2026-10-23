@@ -132,7 +132,7 @@ Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simul
 
 ## Stack technique
 
-* **Frontend :** React 19 + Vite + TypeScript, React Router, CSS natif avec variables (thèmes clair et sombre), Recharts pour la courbe de progression, i18n maison français / anglais (`frontend/src/i18n/`). Le diff viewer est un composant maison, accessible au clavier. Les pages lourdes (tableau de bord, revue, débriefing) sont chargées à la demande. Vite plutôt que Next.js : l'API vivant dans un service Fastify distinct, le SSR n'apporterait qu'un second runtime Node à déployer et la tentation de disperser la logique métier dans des route handlers.
+* **Frontend :** React 19 + Vite + TypeScript, React Router, CSS natif avec variables (thèmes clair et sombre), découpé par écran dans `frontend/src/styles/`, courbe de progression en SVG maison (lisible au clavier, valeurs reprises dans un tableau pour les lecteurs d’écran), i18n maison français / anglais (`frontend/src/i18n/`). Le diff viewer est un composant maison, accessible au clavier. Les pages lourdes (tableau de bord, revue, débriefing) sont chargées à la demande. Vite plutôt que Next.js : l'API vivant dans un service Fastify distinct, le SSR n'apporterait qu'un second runtime Node à déployer et la tentation de disperser la logique métier dans des route handlers.
 * **API Backend :** Node.js avec Fastify en TypeScript, pour une empreinte mémoire réduite et une conteneurisation directe. Authentification par Better Auth, limitation de débit sur l'authentification et la génération de scénarios. Les erreurs métier renvoient un `code` stable que le front traduit.
 * **Tests :** Vitest des deux côtés (Testing Library côté front). Un test vérifie que les dictionnaires français et anglais déclarent les mêmes clés et les mêmes paramètres.
 * **Base de données :** PostgreSQL (gestion relationnelle native des comptes et tentatives, colonnes JSONB pour la ground truth et les résultats).
@@ -197,6 +197,7 @@ Un `npm run check` s'exécute au préalable et signale ce qui manque. C'est ce q
 | `npm run check` | Vérifie que le poste est prêt (`.env`, dépendances) |
 | `npm run check:contrast` | Valide les contrastes WCAG de la palette |
 | `npm test` | Exécute les suites Vitest du backend et du frontend |
+| `TEST_DATABASE_URL=… npm --prefix backend test` | Ajoute les tests d’intégration SQL, sur une base **jetable** (ses tables sont vidées) |
 | `npm run build` | Compile backend puis frontend |
 | `npm run typecheck` | Vérifie les types des deux projets |
 
@@ -210,7 +211,7 @@ L'équipe partage la base du serveur, il n'y a donc pas de conteneur Postgres à
 
 En attendant l'ORM, `backend/sql/*.sql` est appliqué dans l'ordre alphabétique **au démarrage de l'API**, dans une transaction par fichier. Chaque fichier est rejoué à chaque boot, donc tout doit rester idempotent — `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS`.
 
-**État actuel :** les scripts déjà exécutés sur la base partagée (`001_init`, `002_auth`, `003_domain`, `004_difficulty_levels`, `005_scenario_locale`) ont été retirés du dossier. Ils restent dans l'historique git (`git log --all -- backend/sql/`). Une base neuve, par exemple celle du profil `dev`, doit donc les recevoir à la main, dans l'ordre.
+`001_schema.sql` décrit l'état complet de la base (tables Better Auth et tables du jeu) : il crée tout sur une base neuve et ne fait rien sur une base déjà à jour. Pour faire évoluer le schéma, ajouter un fichier numéroté idempotent, puis répercuter le changement dans `001_schema.sql` une fois appliqué partout.
 
 ### Routage du frontend
 

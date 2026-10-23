@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -26,16 +26,6 @@ vi.mock('../../auth', () => ({
   },
 }))
 
-vi.mock('recharts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('recharts')>()
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="responsive-container">{children}</div>
-    ),
-  }
-})
-
 const mockHistory = vi.mocked(challengesApi.history)
 
 function renderDashboard() {
@@ -55,12 +45,10 @@ describe('Dashboard Page', () => {
   })
 
   it('affiche le message d’état vide quand il n’y a aucun challenge', async () => {
-    mockHistory.mockResolvedValue({ attempts: [] })
+    mockHistory.mockResolvedValue({ attempts: [], inProgress: [] })
     renderDashboard()
 
     expect(await screen.findByText('Aucune revue terminée')).toBeInTheDocument()
-    expect(screen.getByText('Tableau de bord de')).toBeInTheDocument()
-    expect(screen.getByText('Alice')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Nouveau challenge' })).toBeInTheDocument()
   })
 
@@ -77,6 +65,7 @@ describe('Dashboard Page', () => {
           submittedAt: '2026-10-18T10:00:00.000Z',
         },
       ],
+      inProgress: [],
     })
 
     const user = userEvent.setup()
@@ -99,5 +88,22 @@ describe('Dashboard Page', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Lancer le challenge/i })).toBeInTheDocument()
     })
+  })
+
+  it('propose de reprendre une partie non soumise, sans dévoiler un challenge Mystère', async () => {
+    mockHistory.mockResolvedValue({
+      attempts: [],
+      inProgress: [
+        { id: 'att-9', title: 'PR #8 : Mot de passe', language: 'python', category: null, difficulty: null, isMystery: true, startedAt: '2026-10-22T08:00:00.000Z' },
+        { id: 'att-7', title: 'PR #12 : Panier', language: 'java', category: 'business_logic', difficulty: '2', isMystery: false, startedAt: '2026-10-21T08:00:00.000Z' },
+      ],
+    })
+    renderDashboard()
+
+    const section = (await screen.findByRole('heading', { name: 'Challenges en cours' })).closest('section')!
+    const links = within(section).getAllByRole('link')
+    expect(links.map((l) => l.getAttribute('href'))).toEqual(['/review/att-9', '/review/att-7'])
+    expect(within(links[0]!).getByText('Mode Mystère')).toBeInTheDocument()
+    expect(within(links[1]!).getByText('Niveau 2 — Bug évident')).toBeInTheDocument()
   })
 })

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router'
-import { CheckCircle2, CircleAlert, MessageSquare, Scale, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CircleAlert, MessageSquare, Scale, XCircle } from 'lucide-react'
 
 import { challengesApi, type AttemptSubmitted, type GroundTruthItem } from '../api/challenges'
 import DiffViewer, { type DiffLine } from '../components/DiffViewer'
 import FeedbackMessage from '../components/FeedbackMessage'
 import LoadingScreen from '../components/LoadingScreen'
 import { describeError } from '../errors/network-error'
+import { SCORE_VERDICT_KEYS, scoreLevel } from '../score-level'
 import { useI18n } from '@/i18n'
 import {
   getCategoryLabels,
@@ -95,15 +96,22 @@ export default function ReviewResult() {
 
   const { scenario, scoreBreakdown: b } = attempt
   const falsePositives = attempt.comments.filter((c) => c.matched_issue_id === null)
+  const level = scoreLevel(attempt.score)
 
   return (
     <div className="review-page">
+      <Link to="/dashboard" className="result-back">
+        <ArrowLeft size={16} aria-hidden="true" /> {t('common.backToDashboard')}
+      </Link>
+
       <section className="pr-card result-summary" aria-labelledby="result-title">
         <div className="result-score">
-          <div className="score-circle result-score-circle" aria-hidden="true">
-            {attempt.score}
+          <div className={`score-badge-circle result-score-circle ${level}`} aria-hidden="true">
+            <span className="score-number">{attempt.score}</span>
+            <span className="score-pct">/100</span>
           </div>
-          <div>
+          <div className="result-score-text">
+            <span className="score-badge-label">{t(SCORE_VERDICT_KEYS[level])}</span>
             <p className="result-kicker">
               {t('result.scoreOutOf100', { score: attempt.score })}
             </p>
@@ -128,7 +136,7 @@ export default function ReviewResult() {
           <Meter
             name={t('result.precision', {
               count: b.false_positives,
-              plural: b.false_positives > 1 ? (locale === 'fr' ? 's' : 's') : '',
+              s: b.false_positives > 1 ? 's' : '',
             })}
             value={b.precision}
             max={10}

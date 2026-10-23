@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   CheckCircle2,
   GitPullRequest,
@@ -40,12 +41,12 @@ const HELP_SEEN_KEY = 'codehow:review-help-seen'
 
 const keyOf =(path: string, line: number) => `${path}:${line}`
 
-// Un rechargement de page ne doit pas effacer une revue en cours de rédaction.
+// Brouillons conservés entre deux visites : une partie se reprend depuis le tableau de bord.
 const draftKey = (attemptId: string) => `codehow:review:${attemptId}`
 
 function loadDrafts(attemptId: string): Record<string, ReviewComment> {
   try {
-    return JSON.parse(sessionStorage.getItem(draftKey(attemptId)) ?? '{}')
+    return JSON.parse(localStorage.getItem(draftKey(attemptId)) ?? '{}')
   } catch {
     return {}
   }
@@ -93,7 +94,7 @@ export default function Review() {
   }, [challengeId, locale, t])
 
   useEffect(() => {
-    sessionStorage.setItem(draftKey(challengeId), JSON.stringify(comments))
+    localStorage.setItem(draftKey(challengeId), JSON.stringify(comments))
   }, [challengeId, comments])
 
   if (alreadySubmitted) return <Navigate to={`/review/${challengeId}/result`} replace />
@@ -153,7 +154,7 @@ export default function Review() {
     setSubmitting(true)
     try {
       await challengesApi.submit(attempt.id, commentList)
-      sessionStorage.removeItem(draftKey(attempt.id))
+      localStorage.removeItem(draftKey(attempt.id))
       await navigate(`/review/${attempt.id}/result`, { replace: true })
     } catch (err: unknown) {
       setSubmitError(describeError(err, t('review.submitError'), locale))
@@ -226,6 +227,10 @@ export default function Review() {
 
   return (
     <div className="review-page">
+      <Link to="/dashboard" className="result-back" title={t('review.draftsKept')}>
+        <ArrowLeft size={16} aria-hidden="true" /> {t('common.backToDashboard')}
+      </Link>
+
       <div className="pr-card review-pr-card">
         <div className="pr-header">
           <div className="pr-header-top">

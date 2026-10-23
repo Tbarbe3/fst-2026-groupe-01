@@ -9,6 +9,7 @@ import { describeNetworkError } from '../errors/network-error'
 import { describePasswordPolicy, validatePassword } from '../errors/password-policy'
 import { useI18n } from '@/i18n'
 import { applyTheme, readStoredTheme, type Theme } from '../theme'
+import { useDialog } from '../hooks/useDialog'
 import FeedbackMessage from './FeedbackMessage'
 
 const THEME_CHOICES = [
@@ -24,6 +25,7 @@ const LANG_CHOICES = [
 /** Paramètres du compte, ouverts depuis la barre de navigation. */
 export default function AccountModal({ onClose }: { onClose: () => void }) {
     const { locale, setLocale, t } = useI18n()
+    const dialogRef = useDialog<HTMLDivElement>(onClose)
     const { data: session } = authClient.useSession()
     const navigate = useNavigate()
     const [currentTheme, setCurrentTheme] = useState<Theme>(readStoredTheme)
@@ -206,10 +208,17 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div
+                ref={dialogRef}
+                className="modal-content"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="account-dialog-title"
+                onClick={e => e.stopPropagation()}
+            >
                 <div className="modal-header">
-                    <h3>{t('account.title')}</h3>
-                    <button className="btn-close" onClick={onClose} aria-label={t('common.close')}>
+                    <h3 id="account-dialog-title">{t('account.title')}</h3>
+                    <button type="button" className="btn-close" onClick={onClose} aria-label={t('common.close')}>
                         <X size={18} />
                     </button>
                 </div>

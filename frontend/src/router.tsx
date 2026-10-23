@@ -8,7 +8,7 @@ import AuthPage from './pages/AuthPage'
 import Home from './pages/Home'
 import NotFound from './pages/NotFound'
 
-// Pages lourdes (recharts, Monaco) chargées à la demande pour alléger le bundle initial.
+// Pages réservées aux joueurs connectés, chargées à la demande pour alléger le bundle initial.
 const lazyPage = (load: () => Promise<{ default: React.ComponentType }>) => async () => ({
   Component: (await load()).default,
 })

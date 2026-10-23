@@ -96,7 +96,7 @@ export default function SiteHeader() {
                 <button
                   type="button"
                   onClick={() => void logout()}
-                  className="btn-icon-nav btn-logout"
+                  className="btn-icon-nav btn-nav-logout"
                   title={t('header.logout')}
                   aria-label={t('header.logout')}
                 >

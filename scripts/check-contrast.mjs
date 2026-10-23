@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vérifie les contrastes des thèmes de frontend/src/index.css.
+ * Vérifie les contrastes des thèmes de frontend/src/styles/base.css.
  * Seuils WCAG AA : 4.5:1 pour le texte, 3:1 pour les bordures de contrôle
  * et le focus. Certaines paires passent de justesse, d'où l'automatisation.
  */
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 // Fins de ligne normalisées : le dépôt est en LF mais la copie de travail
 // est en CRLF sous Windows, ce qui ferait échouer toute recherche multiligne.
-const css = readFileSync(join(root, 'frontend/src/index.css'), 'utf8').replace(
+const css = readFileSync(join(root, 'frontend/src/styles/base.css'), 'utf8').replace(
   /\r\n/g,
   '\n',
 )
@@ -24,7 +24,7 @@ function readVars(theme) {
   )
   const match = css.match(pattern)
   if (!match) {
-    throw new Error(`Thème introuvable dans index.css : ${theme}`)
+    throw new Error(`Thème introuvable dans styles/base.css : ${theme}`)
   }
   const vars = {}
   for (const [, name, value] of match[1].matchAll(/--([\w-]+):\s*([^;]+);/g)) {
@@ -94,7 +94,7 @@ for (const [name, vars] of Object.entries(themes)) {
 
 if (failures > 0) {
   console.error(
-    `\n${failures} paire(s) sous le seuil. Ajuster la palette dans frontend/src/index.css.`,
+    `\n${failures} paire(s) sous le seuil. Ajuster la palette dans frontend/src/styles/base.css.`,
   )
   process.exit(1)
 }
