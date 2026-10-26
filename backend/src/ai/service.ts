@@ -2,7 +2,7 @@ import type { FastifyBaseLogger } from 'fastify'
 
 import { localizedScenario, pickCatalogEntry } from './mock-catalog.js'
 import { MESSAGES } from './messages.js'
-import type { AiProvider, JudgeInput } from './provider.js'
+import { createMockProvider, type AiProvider, type JudgeInput } from './provider.js'
 import { buildScenario } from './scenario-builder.js'
 import { computeScore, heuristicJudge, sanitizeJudgeOutput, type ScoreBreakdown } from './scoring.js'
 import type { BuiltScenario, GenerationParams, JudgeResult } from './types.js'
@@ -53,6 +53,20 @@ export interface JudgementOutcome extends JudgeResult {
   judgedBy: 'ai' | 'heuristic'
 }
 
+const fallbackProvider = createMockProvider(0)
+
+async function fallbackJudge(input: JudgeInput, log: FastifyBaseLogger): Promise<JudgeResult> {
+  try {
+    const raw = await fallbackProvider.judge(input)
+    const result = sanitizeJudgeOutput(raw, input.comments, input.groundTruth, input.locale)
+    // La synthèse signale le repli au joueur, comme le fait le débriefing.
+    return { ...result, summary: MESSAGES[input.locale].heuristicSummary }
+  } catch (error) {
+    log.error({ err: error }, 'Juge simulé en échec, repli heuristique')
+    return heuristicJudge(input.comments, input.groundTruth, input.locale)
+  }
+}
+
 export async function judgeAttempt(
   provider: AiProvider,
   input: JudgeInput,
@@ -67,8 +81,10 @@ export async function judgeAttempt(
     try {
       result = sanitizeJudgeOutput(await provider.judge(input), input.comments, input.groundTruth, input.locale)
     } catch (error) {
-      log.warn({ err: error }, 'Juge IA indisponible, repli heuristique')
-      result = heuristicJudge(input.comments, input.groundTruth, input.locale)
+      // Quota dépassé, clé invalide, délai, sortie mal formée : le juge simulé
+      // prend le relais, pour qu'une démo ne dépende jamais de la clé API.
+      log.warn({ err: error }, 'Juge IA indisponible, repli sur le juge simulé')
+      result = await fallbackJudge(input, log)
       judgedBy = 'heuristic'
     }
   }

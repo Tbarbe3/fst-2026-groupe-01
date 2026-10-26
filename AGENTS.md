@@ -28,6 +28,34 @@ Le projet **n'est pas un workspace npm classique**. Le dossier racine sert à or
 - `npm run dev:local` : Lance l'API et le front sur une base locale de test (nécessite `npm run db:up`).
 - `npm run check` : Vérifie la validité de l'environnement (`.env` existants et dépendances).
 - `npm run build` : Compile le backend et le frontend.
+- `npm test` : Suites Vitest du backend et du frontend (doivent passer avant tout commit).
+- `npm run check:contrast` : Contrastes WCAG de la palette.
+- Mise en prod, sur le VPS : `docker compose --profile prod up -d --build`.
+
+## Production
+- **URL publique :** https://codehow.thomasbarbe.com (santé de l'API : https://codehow.thomasbarbe.com/api/health).
+- Traefik mutualisé (réseau Docker externe `web`) : `Host(DOMAIN) && PathPrefix(/api)` va à l'API (priorité 100), le reste au conteneur Nginx du front.
+- Sans `GEMINI_API_KEY`, ou avec `AI_MODE=mock`, l'API tourne en mode simulé. Avec la clé, toute erreur de Gemini (quota 429, clé refusée, délai, JSON invalide) bascule sur le catalogue statique pour la génération et sur le juge simulé pour la notation : une démo ne dépend jamais de la clé.
+
+## Pièges rencontrés
+
+### Better Auth
+- **`BETTER_AUTH_URL` doit être l'URL HTTPS publique** (`https://${DOMAIN}`), pas `http://localhost:3000`. Sinon les cookies perdent l'attribut `Secure` et les origines ne correspondent plus. `config/env.ts` refuse de démarrer en prod avec une URL en `http://`.
+- **`BETTER_AUTH_SECRET` est obligatoire en prod** : un secret par défaut rend les cookies falsifiables. Le changer déconnecte tout le monde.
+- **`trustProxy: true` en prod** : Traefik parle en HTTP clair à l'API. Sans lui, `request.protocol` vaut `http`, l'URL reconstruite pour Better Auth ne correspond plus à `baseURL` et les requêtes sont rejetées. La limitation de débit lit aussi la mauvaise IP (celle de Traefik).
+- **Reconstruire l'URL avec `request.protocol` et `request.host`** dans le relais `/api/auth/*` de `app.ts`, jamais `http://` codé en dur.
+- **`trustedOrigins`** : en dev, lister les ports Vite (5173, 5174) ; en prod, seulement l'URL publique.
+- **Pas d'envoi de courrier** : `requireEmailVerification` et la vérification au changement d'e-mail sont désactivés, sinon les comptes restent bloqués.
+- **Traduire les erreurs par leur `code`**, pas par `message` : le texte anglais change d'une version à l'autre.
+- Les tables `user`, `session`, `account`, `verification` appartiennent à Better Auth : ne pas les renommer, ne pas y ajouter de colonnes à la main sans passer par sa configuration.
+
+### Mise en prod
+- **Une seule origine** : le front appelle `/api` en relatif. Traefik route `/api` vers l'API ; le `nginx.conf` du front ne fait que le fallback SPA. Une ancienne version relayait aussi `/api` vers `http://api:3000`, un hôte inexistant dans le Compose : erreurs 502.
+- **Copier `sql/` dans l'image** (`COPY --chown=node:node sql ./sql` dans `backend/Dockerfile`) : les migrations sont rejouées au démarrage, sans ce dossier l'API démarre sur une base vide.
+- **Limite de corps de 64 Ko** (`bodyLimit`) : la photo de profil est stockée en data URL, elle doit être redimensionnée côté client avant envoi, sinon 413.
+- **Doubler les `$`** du hash bcrypt de `ADMINER_BASIC_AUTH` dans `.env` : Compose les interpole sinon.
+- **DNS** : `DOMAIN` et `ADMINER_DOMAIN` ont chacun besoin d'un enregistrement A vers le VPS, sinon Let's Encrypt échoue.
+- **Même port 5432 pour le tunnel SSH et la base locale** : vérifier dans les logs de démarrage la cible annoncée par `describeDatabaseTarget` avant de chercher plus loin.
 
 ## Règles impératives
 

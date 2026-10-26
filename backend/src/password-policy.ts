@@ -1,5 +1,5 @@
 // Dupliqué dans frontend/src/password-policy.ts : pas de workspace partagé
-// entre les deux projets. Garder les deux synchronisées (cf. agent.md).
+// entre les deux projets. Garder les deux synchronisées (cf. AGENTS.md).
 export const MIN_PASSWORD_LENGTH = 8
 export const MAX_PASSWORD_LENGTH = 128
 

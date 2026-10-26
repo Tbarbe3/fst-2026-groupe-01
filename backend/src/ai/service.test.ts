@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { FastifyBaseLogger } from 'fastify'
 
+import { GeminiError } from './gemini.js'
+import { MESSAGES } from './messages.js'
 import { MOCK_CATALOG } from './mock-catalog.js'
 import { createMockProvider, type AiProvider } from './provider.js'
 import { buildScenario } from './scenario-builder.js'
@@ -67,6 +69,26 @@ describe('judgeAttempt', () => {
     const outcome = await judgeAttempt(provider, { groundTruth, comments, codeLines: [''], locale: 'fr' as const }, log)
     expect(outcome.judgedBy).toBe('heuristic')
     expect(outcome.breakdown.found).toBe(1)
+  })
+
+  it.each([
+    ['quota dépassé (429)', new GeminiError('Gemini a répondu 429', 429)],
+    ['clé refusée (403)', new GeminiError('Gemini a répondu 403', 403)],
+    ['délai dépassé', new GeminiError('Gemini injoignable : timeout')],
+  ])('confie la note au juge simulé en cas de %s', async (_, error) => {
+    const provider = fakeGemini({ judge: vi.fn().mockRejectedValue(error) })
+    const outcome = await judgeAttempt(provider, { groundTruth, comments, codeLines: [''], locale: 'fr' as const }, log)
+    expect(outcome.judgedBy).toBe('heuristic')
+    expect(outcome.verdicts[0].matched_issue_id).toBe(target.id)
+    expect(outcome.summary).toBe(MESSAGES.fr.heuristicSummary)
+    expect(outcome.score).toBeGreaterThan(0)
+  })
+
+  it('confie la note au juge simulé si la sortie du modèle est mal formée', async () => {
+    const provider = fakeGemini({ judge: vi.fn().mockResolvedValue({ verdicts: 'n’importe quoi' }) })
+    const outcome = await judgeAttempt(provider, { groundTruth, comments, codeLines: [''], locale: 'en' as const }, log)
+    expect(outcome.judgedBy).toBe('heuristic')
+    expect(outcome.summary).toBe(MESSAGES.en.heuristicSummary)
   })
 
   it('n’appelle pas le juge pour une revue vide', async () => {

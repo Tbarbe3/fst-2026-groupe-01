@@ -50,7 +50,7 @@ sauvegarde. Une erreur de manipulation dans Adminer est définitive. Un
 ## Sécurité
 
 - [x] Aucune vulnérabilité dans les dépendances des trois projets
-      (`npm audit`), deux `overrides` en place — voir `agent.md` §6.
+      (`npm audit`), deux `overrides` en place — voir `AGENTS.md` §6.
 - [x] Aucun secret dans le dépôt ni dans l'historique git.
 - [x] Requêtes SQL paramétrées, limitation de débit sur `/api/auth`,
       messages d'authentification non divulgants.

@@ -1,5 +1,5 @@
 // Dupliqué dans backend/src/password-policy.ts : pas de workspace partagé
-// entre les deux projets. Garder les deux synchronisées (cf. agent.md).
+// entre les deux projets. Garder les deux synchronisées (cf. AGENTS.md).
 import { getCurrentLocale, translate, type Locale } from '@/i18n'
 
 export const MIN_PASSWORD_LENGTH = 8
