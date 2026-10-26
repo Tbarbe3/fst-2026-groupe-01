@@ -1,5 +1,7 @@
 # Code How?
 
+**Application en ligne : https://codehow.thomasbarbe.com** (santé de l'API : [/api/health](https://codehow.thomasbarbe.com/api/health))
+
 ## Pour qui ?
 
 * **Cible principale :** Développeurs juniors et intermédiaires (1 à 4 ans d'expérience).
@@ -126,7 +128,7 @@ Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simul
   * La détection est décidée par le serveur (même fichier, ±2 lignes) : le juge ne peut valider qu'une anomalie candidate, jamais en inventer une. Une injection de prompt dans un commentaire ne transforme donc pas un faux positif en trouvaille.
   * La note est calculée par le serveur, jamais par le modèle : détection pondérée par la criticité (60 points), clarté des explications (30), précision (10, −5 par faux positif).
 * **Sortie :** une synthèse et, par remarque, `matched_issue_id`, `clarity_score` et `feedback`, dans la langue du joueur.
-* **Repli :** heuristique par lignes seule (clarté forfaitaire), signalée sur le débriefing. Une revue vide n'appelle pas le juge.
+* **Repli :** toute erreur de Gemini (quota dépassé, clé refusée, délai, sortie mal formée) passe la main au juge simulé (`createMockProvider`), qui note la clarté au recouvrement de mots-clés ; le repli est signalé sur le débriefing. Une démo ne dépend donc jamais de la clé API. Une revue vide n'appelle pas le juge.
 
 ---
 
