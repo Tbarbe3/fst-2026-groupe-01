@@ -28,8 +28,8 @@ export const env = {
   geminiApiKey: process.env['GEMINI_API_KEY'] ?? '',
   // Sans clé, le mode simulé s'impose : un poste neuf démarre sans rien configurer.
   aiMode: (process.env['AI_MODE'] || (process.env['GEMINI_API_KEY'] ? 'gemini' : 'mock')) as string,
-  geminiGeneratorModel: optional('GEMINI_MODEL_GENERATOR', 'gemini-2.5-flash'),
-  geminiJudgeModel: optional('GEMINI_MODEL_JUDGE', 'gemini-2.5-flash'),
+  geminiGeneratorModel: optional('GEMINI_MODEL_GENERATOR', 'gemini-3.5-flash-lite'),
+  geminiJudgeModel: optional('GEMINI_MODEL_JUDGE', 'gemini-3.5-flash-lite'),
   mockLatencyMs: Number(optional('MOCK_LATENCY_MS', '1500')),
 } as const
 
