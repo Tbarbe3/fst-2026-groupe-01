@@ -56,6 +56,7 @@ export async function buildApp(): Promise<FastifyInstance> {
           apiKey: env.geminiApiKey,
           generatorModel: env.geminiGeneratorModel,
           judgeModel: env.geminiJudgeModel,
+          thinkingLevel: env.geminiThinkingLevel === 'off' ? undefined : env.geminiThinkingLevel,
         })
       : createMockProvider(env.mockLatencyMs)
   app.log.info({ mode: ai.name }, 'Brique IA')

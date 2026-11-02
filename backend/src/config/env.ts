@@ -31,6 +31,8 @@ export const env = {
   aiMode: (process.env['AI_MODE'] || (process.env['GEMINI_API_KEY'] ? 'gemini' : 'mock')) as string,
   geminiGeneratorModel: optional('GEMINI_MODEL_GENERATOR', 'gemini-3.5-flash-lite'),
   geminiJudgeModel: optional('GEMINI_MODEL_JUDGE', 'gemini-3.5-flash-lite'),
+  // « off » n'envoie aucun réglage : utile pour un modèle qui ne le connaît pas.
+  geminiThinkingLevel: optional('GEMINI_THINKING_LEVEL', 'low'),
   mockLatencyMs: Number(optional('MOCK_LATENCY_MS', '1500')),
 } as const
 

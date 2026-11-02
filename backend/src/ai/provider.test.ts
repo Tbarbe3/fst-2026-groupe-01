@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { MOCK_CATALOG, localizedScenario, pickCatalogEntry } from './mock-catalog.js'
 import { DIFFICULTIES, LANGUAGES } from './types.js'
-import { createMockProvider } from './provider.js'
+import { GeminiError } from './gemini.js'
+import { callWithFallback, createMockProvider } from './provider.js'
 import { buildScenario } from './scenario-builder.js'
 
 describe('pickCatalogEntry', () => {
@@ -110,5 +111,31 @@ describe('createMockProvider', () => {
     })) as { verdicts: { matched_issue_id: string; clarity_score: number }[] }
 
     expect(result.verdicts[0]).toMatchObject({ matched_issue_id: '', clarity_score: 0 })
+  })
+})
+
+describe('callWithFallback', () => {
+  const request = { apiKey: 'k', system: 's', prompt: 'p', schema: {}, temperature: 0 }
+
+  // Symptôme d'origine : un seul modèle saturé (503) privait toute la prod du juge IA.
+  it('passe au modèle suivant quand Google renvoie une erreur HTTP', async () => {
+    const call = vi
+      .fn()
+      .mockRejectedValueOnce(new GeminiError('Gemini a répondu 503', 503))
+      .mockResolvedValueOnce({ ok: true })
+    await expect(callWithFallback('a, b', request, call)).resolves.toEqual({ ok: true })
+    expect(call.mock.calls.map((c) => c[0].model)).toEqual(['a', 'b'])
+  })
+
+  it('relaie la dernière erreur si tous les modèles échouent', async () => {
+    const call = vi.fn().mockRejectedValue(new GeminiError('Gemini a répondu 404', 404))
+    await expect(callWithFallback('a,b', request, call)).rejects.toThrow(/404/)
+    expect(call).toHaveBeenCalledTimes(2)
+  })
+
+  it('ne réessaie pas après un délai dépassé', async () => {
+    const call = vi.fn().mockRejectedValue(new GeminiError('Gemini injoignable : timeout'))
+    await expect(callWithFallback('a,b', request, call)).rejects.toThrow(/timeout/)
+    expect(call).toHaveBeenCalledTimes(1)
   })
 })

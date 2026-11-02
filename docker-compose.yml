@@ -96,6 +96,7 @@ services:
       AI_MODE: ${AI_MODE:-}
       GEMINI_MODEL_GENERATOR: ${GEMINI_MODEL_GENERATOR:-}
       GEMINI_MODEL_JUDGE: ${GEMINI_MODEL_JUDGE:-}
+      GEMINI_THINKING_LEVEL: ${GEMINI_THINKING_LEVEL:-}
     labels:
       - "traefik.enable=true"
       # Comme adminer, ce conteneur est sur `web` et `internal` : il faut

@@ -15,6 +15,8 @@ export interface GeminiRequest {
   schema: object
   temperature: number
   timeoutMs?: number
+  /** Niveau de réflexion des modèles Gemini 3 ; absent : celui du modèle. */
+  thinkingLevel?: string
   fetchImpl?: typeof fetch
 }
 
@@ -37,6 +39,9 @@ export async function callGemini(req: GeminiRequest): Promise<unknown> {
           temperature: req.temperature,
           responseMimeType: 'application/json',
           responseSchema: req.schema,
+          // Par défaut, un modèle Gemini 3 réfléchit longuement : près de 30 s
+          // pour répondre « OK », au-delà du délai du juge.
+          ...(req.thinkingLevel ? { thinkingConfig: { thinkingLevel: req.thinkingLevel } } : {}),
         },
       }),
       signal: AbortSignal.timeout(req.timeoutMs ?? 60_000),
@@ -46,7 +51,15 @@ export async function callGemini(req: GeminiRequest): Promise<unknown> {
   }
 
   if (!response.ok) {
-    throw new GeminiError(`Gemini a répondu ${response.status}`, response.status)
+    // Le motif de Google (modèle retiré, quota…) est indispensable au diagnostic.
+    const detail = await response
+      .json()
+      .then((b) => (b as { error?: { message?: string } }).error?.message ?? '')
+      .catch(() => '')
+    throw new GeminiError(
+      `Gemini a répondu ${response.status}${detail ? ` : ${detail.slice(0, 300)}` : ''}`,
+      response.status,
+    )
   }
 
   const body = (await response.json()) as {

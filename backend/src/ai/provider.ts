@@ -1,4 +1,4 @@
-import { callGemini } from './gemini.js'
+import { GeminiError, callGemini, type GeminiRequest } from './gemini.js'
 import { MESSAGES } from './messages.js'
 import { localizedScenario, pickCatalogEntry } from './mock-catalog.js'
 import {
@@ -39,32 +39,56 @@ function judgeComments(input: JudgeInput) {
   }))
 }
 
+/**
+ * Essaie chaque modèle de la liste (séparée par des virgules) tant que Google
+ * répond par une erreur HTTP : modèle saturé (503), retiré (404), quota (429)…
+ */
+export async function callWithFallback(
+  models: string,
+  request: Omit<GeminiRequest, 'model'>,
+  call: (req: GeminiRequest) => Promise<unknown> = callGemini,
+): Promise<unknown> {
+  const list = models.split(',').map((m) => m.trim()).filter(Boolean)
+  let lastError: unknown = new GeminiError('Aucun modèle Gemini configuré')
+  for (const model of list) {
+    try {
+      return await call({ ...request, model })
+    } catch (error) {
+      lastError = error
+      // Un délai dépassé n'est pas réessayé : il doublerait l'attente du joueur.
+      if (!(error instanceof GeminiError) || error.status === undefined) throw error
+    }
+  }
+  throw lastError
+}
+
 export function createGeminiProvider(config: {
   apiKey: string
   generatorModel: string
   judgeModel: string
+  thinkingLevel?: string
 }): AiProvider {
   return {
     name: 'gemini',
-    generatorModel: config.generatorModel,
+    generatorModel: config.generatorModel.split(',')[0]!.trim(),
     generateScenario: (params, temperature) =>
-      callGemini({
+      callWithFallback(config.generatorModel, {
         apiKey: config.apiKey,
-        model: config.generatorModel,
         system: GENERATOR_SYSTEM,
         prompt: generatorPrompt(params),
         schema: GENERATOR_SCHEMA,
         temperature,
+        thinkingLevel: config.thinkingLevel,
       }),
     judge: (input) =>
-      callGemini({
+      callWithFallback(config.judgeModel, {
         apiKey: config.apiKey,
-        model: config.judgeModel,
         system: JUDGE_SYSTEM,
         prompt: judgePrompt(input.locale, input.groundTruth, judgeComments(input)),
         schema: JUDGE_SCHEMA,
         temperature: 0,
         timeoutMs: 30_000,
+        thinkingLevel: config.thinkingLevel,
       }),
   }
 }

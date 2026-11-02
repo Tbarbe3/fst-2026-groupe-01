@@ -34,6 +34,27 @@ describe('callGemini', () => {
     await expect(callGemini(request(reply({}, 429)))).rejects.toBeInstanceOf(GeminiError)
   })
 
+  // Symptôme d'origine : un simple « Gemini a répondu 404 » cachait un modèle retiré.
+  it('reprend le motif donné par Google dans l’erreur', async () => {
+    const fetchImpl = reply({ error: { message: 'This model is no longer available' } }, 404)
+    await expect(callGemini(request(fetchImpl))).rejects.toThrow(/404 : This model is no longer available/)
+  })
+
+  // Symptôme d'origine : près de 30 s de réflexion pour répondre « OK ».
+  it('transmet le niveau de réflexion demandé', async () => {
+    const fetchImpl = reply({ candidates: [{ content: { parts: [{ text: '{}' }] } }] })
+    await callGemini({ ...request(fetchImpl), thinkingLevel: 'minimal' })
+    const body = JSON.parse(vi.mocked(fetchImpl).mock.calls[0]![1]!.body as string)
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' })
+  })
+
+  it('n’envoie aucun réglage de réflexion par défaut', async () => {
+    const fetchImpl = reply({ candidates: [{ content: { parts: [{ text: '{}' }] } }] })
+    await callGemini(request(fetchImpl))
+    const body = JSON.parse(vi.mocked(fetchImpl).mock.calls[0]![1]!.body as string)
+    expect(body.generationConfig.thinkingConfig).toBeUndefined()
+  })
+
   it('lève sur une réponse vide', async () => {
     await expect(
       callGemini(request(reply({ candidates: [{ finishReason: 'SAFETY' }] }))),
