@@ -5,7 +5,7 @@ Ce fichier sert de contexte de référence pour les assistants IA travaillant su
 ## Résumé du Projet
 **Code How?** est une plateforme d'entraînement destinée aux développeurs (juniors/intermédiaires) pour progresser en relecture critique de code (code review), sécurité logicielle et bonnes pratiques.
 - **Principe :** L'utilisateur audite un faux ticket de Pull Request généré par l'IA (Gemini) et doit trouver des failles ou bugs spécifiques.
-- **Brique IA :** Gemini 2.5 Flash est utilisé à deux niveaux :
+- **Brique IA :** Gemini 3.5 Flash-Lite est utilisé à deux niveaux :
   1. Générer le scénario et le diff de code contenant l'erreur (*Ground Truth*).
   2. Évaluer et noter les commentaires de l'utilisateur par rapport à la *Ground Truth*.
 

@@ -96,12 +96,12 @@ Supprimer un compte supprime en cascade ses parties et ses remarques ; les scén
 
 ## Brique IA
 
-Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simulé** : scénarios tirés d'un catalogue écrit à la main en français et en anglais (`mock-catalog.ts`), juge sans IA, aucun jeton consommé.
+Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simulé** : scénarios tirés d'un catalogue écrit à la main en français et en anglais (`mock-catalog.ts`), juge sans IA, aucun jeton consommé. Le catalogue couvre les sept langages : le langage choisi est toujours respecté, puis le niveau le plus proche, de préférence en dessous.
 
 ### Brique 1 : le générateur de scénario
 
 * **Rôle :** rédiger le ticket et le persona, produire un diff réaliste contenant les anomalies demandées et la ground truth de référence.
-* **Modèle :** Gemini 2.5 Flash (`GEMINI_MODEL_GENERATOR`), sortie JSON contrainte par schéma.
+* **Modèle :** Gemini 3.5 Flash-Lite (`GEMINI_MODEL_GENERATOR`), sortie JSON contrainte par schéma.
 * **Entrées :** langage, niveau de 1 à 5 (avec un guide par niveau : du point-virgule manquant au niveau 1 jusqu'aux anomalies visibles seulement à l'exécution au niveau 5), catégorie d'erreur, langue de rédaction.
 * **Sortie :** fichiers découpés en blocs de lignes typées (`context`, `add`, `delete`), chaque ligne fautive portant un `issue_ref` vers une anomalie. Le modèle ne donne aucun numéro de ligne absolu : le serveur les calcule, un LLM comptant mal.
 
@@ -122,7 +122,7 @@ Code dans `backend/src/ai/`. Sans `GEMINI_API_KEY`, l'API tourne en **mode simul
 ### Brique 2 : le juge évaluateur
 
 * **Rôle :** juger la justesse et la clarté des explications du joueur.
-* **Modèle :** Gemini 2.5 Flash (`GEMINI_MODEL_JUDGE`), température 0, sortie JSON contrainte.
+* **Modèle :** Gemini 3.5 Flash-Lite (`GEMINI_MODEL_JUDGE`), température 0, sortie JSON contrainte.
 * **Économie de jetons :** le juge ne reçoit pas le diff, seulement la ground truth et, pour chaque remarque, la ligne commentée et son texte.
 * **Garde-fous :**
   * La détection est décidée par le serveur (même fichier, ±2 lignes) : le juge ne peut valider qu'une anomalie candidate, jamais en inventer une. Une injection de prompt dans un commentaire ne transforme donc pas un faux positif en trouvaille.

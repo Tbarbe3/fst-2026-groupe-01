@@ -576,6 +576,269 @@ export const MOCK_CATALOG: CatalogEntry[] = [
       ],
     },
   },
+  {
+    language: 'php',
+    difficulty: '1',
+    category: 'business_logic',
+    en: {
+      title: 'PR #5: Price including VAT',
+      ticket_context: '[SHOP-3] On the product page, display the price including 20% VAT.',
+      persona: {
+        archetype: 'motivated_beginner',
+        bio: 'Coming from JavaScript, still forgets some PHP syntax.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The semicolon ";" is missing at the end of the return statement.',
+          why: 'In PHP every statement ends with ";". Without it the file raises a parse error and the product page no longer loads.',
+          ideal_fix: 'Add ";" at the end of the line.',
+        },
+      },
+    },
+    scenario: {
+      title: 'PR #5 : Prix TTC',
+      ticket_context: '[SHOP-3] Sur la fiche produit, afficher le prix TTC avec une TVA de 20 %.',
+      persona: {
+        name: 'Léa',
+        archetype: 'débutante_motivée',
+        bio: 'Vient de JavaScript, oublie encore parfois la syntaxe de PHP.',
+      },
+      files: [
+        {
+          path: 'src/Pricing.php',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: '<?php' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'const VAT_RATE = 0.20;' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'function priceWithVat(float $price): float' },
+                { kind: 'add', text: '{' },
+                { kind: 'add', text: '    return round($price * (1 + VAT_RATE), 2)', issue_ref: 'I1' },
+                { kind: 'add', text: '}' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'business_logic',
+          severity: 'major',
+          expected_issue: 'Il manque le point-virgule « ; » à la fin du return.',
+          why: 'En PHP, chaque instruction se termine par « ; ». Sans lui, le fichier lève une erreur d’analyse et la fiche produit ne s’affiche plus.',
+          ideal_fix: 'Ajouter « ; » en fin de ligne.',
+          fixed_lines: ['    return round($price * (1 + VAT_RATE), 2);'],
+        },
+      ],
+    },
+  },
+  {
+    language: 'rust',
+    difficulty: '1',
+    category: 'architecture',
+    en: {
+      title: 'PR #11: Cart total',
+      ticket_context: '[CART-6] Compute the total of the cart, in cents, from the unit price and quantity of each line.',
+      persona: {
+        archetype: 'motivated_beginner',
+        bio: 'Discovering Rust, fights the compiler more than the logic.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The variable total is not declared mutable: "let mut" is missing.',
+          why: 'In Rust a binding is immutable by default. "total += ..." does not compile (error E0384), so the feature cannot even be built.',
+          ideal_fix: 'Declare let mut total = 0;, or write lines.iter().map(|l| l.unit_cents * l.quantity).sum().',
+        },
+      },
+    },
+    scenario: {
+      title: 'PR #11 : Total du panier',
+      ticket_context:
+        '[CART-6] Calculer le total du panier, en centimes, à partir du prix unitaire et de la quantité de chaque ligne.',
+      persona: {
+        name: 'Noah',
+        archetype: 'débutant_motivé',
+        bio: 'Découvre Rust, se bat davantage avec le compilateur qu’avec la logique.',
+      },
+      files: [
+        {
+          path: 'src/cart.rs',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: 'pub struct Line {' },
+                { kind: 'add', text: '    pub unit_cents: u64,' },
+                { kind: 'add', text: '    pub quantity: u64,' },
+                { kind: 'add', text: '}' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'pub fn total_cents(lines: &[Line]) -> u64 {' },
+                { kind: 'add', text: '    let total = 0;', issue_ref: 'I1' },
+                { kind: 'add', text: '    for line in lines {' },
+                { kind: 'add', text: '        total += line.unit_cents * line.quantity;' },
+                { kind: 'add', text: '    }' },
+                { kind: 'add', text: '    total' },
+                { kind: 'add', text: '}' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'architecture',
+          severity: 'major',
+          expected_issue: 'La variable total n’est pas déclarée mutable : il manque « let mut ».',
+          why: 'En Rust, une variable est immuable par défaut. « total += ... » ne compile pas (erreur E0384) : la fonctionnalité ne peut même pas être construite.',
+          ideal_fix: 'Déclarer let mut total = 0;, ou écrire lines.iter().map(|l| l.unit_cents * l.quantity).sum().',
+          fixed_lines: ['    let mut total = 0;'],
+        },
+      ],
+    },
+  },
+  {
+    language: 'csharp',
+    difficulty: '2',
+    category: 'security_owasp',
+    en: {
+      title: 'PR #19: Restricting the admin page',
+      ticket_context: '[ADM-4] Only users with the Admin role may open the back-office; others get a 403.',
+      persona: {
+        archetype: 'diligent_junior',
+        bio: 'Reads the ticket carefully, tests only with an admin account.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The condition is inverted: admins are refused and everyone else is let in.',
+          why: 'The "!" grants access to any user who is not an admin, an access-control flaw (OWASP A01): anyone signed in reaches the back-office.',
+          ideal_fix: 'Remove the "!": if (user.IsInRole("Admin")) return View();, and return Forbid() otherwise.',
+        },
+      },
+    },
+    scenario: {
+      title: 'PR #19 : Restreindre la page d’administration',
+      ticket_context:
+        '[ADM-4] Seuls les utilisateurs ayant le rôle Admin peuvent ouvrir le back-office ; les autres reçoivent une 403.',
+      persona: {
+        name: 'Inès',
+        archetype: 'junior_appliquée',
+        bio: 'Lit attentivement le ticket, teste uniquement avec un compte administrateur.',
+      },
+      files: [
+        {
+          path: 'Controllers/AdminController.cs',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: 'using Microsoft.AspNetCore.Mvc;' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'public class AdminController : Controller' },
+                { kind: 'add', text: '{' },
+                { kind: 'add', text: '    public IActionResult Index()' },
+                { kind: 'add', text: '    {' },
+                { kind: 'add', text: '        if (!User.IsInRole("Admin"))', issue_ref: 'I1' },
+                { kind: 'add', text: '        {' },
+                { kind: 'add', text: '            return View();' },
+                { kind: 'add', text: '        }' },
+                { kind: 'add', text: '        return Forbid();' },
+                { kind: 'add', text: '    }' },
+                { kind: 'add', text: '}' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'security_owasp',
+          severity: 'critical',
+          expected_issue: 'La condition est inversée : les administrateurs sont refusés et tous les autres entrent.',
+          why: 'Le « ! » ouvre l’accès à tout utilisateur qui n’est pas administrateur : contrôle d’accès défaillant (OWASP A01), n’importe quel compte connecté atteint le back-office.',
+          ideal_fix: 'Retirer le « ! » : if (User.IsInRole("Admin")) return View();, et Forbid() sinon.',
+          fixed_lines: ['        if (User.IsInRole("Admin"))'],
+        },
+      ],
+    },
+  },
+  {
+    language: 'go',
+    difficulty: '2',
+    category: 'architecture',
+    en: {
+      title: 'PR #33: Reading the configuration file',
+      ticket_context: '[OPS-12] At startup, load the configuration from config.json and stop with a clear message if it is invalid.',
+      persona: {
+        archetype: 'rushed_junior',
+        bio: 'Wants the feature merged before the weekend, skips the error paths.',
+      },
+      issues: {
+        I1: {
+          expected_issue: 'The error returned by os.ReadFile is ignored with "_".',
+          why: 'If the file is missing, data is empty and json.Unmarshal fails with a misleading "unexpected end of JSON input" instead of saying the file was not found.',
+          ideal_fix: 'Read data, err := os.ReadFile(path) and return fmt.Errorf("lecture de %s : %w", path, err) when err != nil.',
+        },
+      },
+    },
+    scenario: {
+      title: 'PR #33 : Lecture du fichier de configuration',
+      ticket_context:
+        '[OPS-12] Au démarrage, charger la configuration depuis config.json et s’arrêter avec un message clair si elle est invalide.',
+      persona: {
+        name: 'Tom',
+        archetype: 'junior_pressé',
+        bio: 'Veut fusionner avant le week-end, saute les cas d’erreur.',
+      },
+      files: [
+        {
+          path: 'internal/config/load.go',
+          hunks: [
+            {
+              start_line: 1,
+              lines: [
+                { kind: 'add', text: 'package config' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'import (' },
+                { kind: 'add', text: '\t"encoding/json"' },
+                { kind: 'add', text: '\t"os"' },
+                { kind: 'add', text: ')' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'type Config struct {' },
+                { kind: 'add', text: '\tPort int `json:"port"`' },
+                { kind: 'add', text: '}' },
+                { kind: 'add', text: '' },
+                { kind: 'add', text: 'func Load(path string) (*Config, error) {' },
+                { kind: 'add', text: '\tdata, _ := os.ReadFile(path)', issue_ref: 'I1' },
+                { kind: 'add', text: '\tvar cfg Config' },
+                { kind: 'add', text: '\tif err := json.Unmarshal(data, &cfg); err != nil {' },
+                { kind: 'add', text: '\t\treturn nil, err' },
+                { kind: 'add', text: '\t}' },
+                { kind: 'add', text: '\treturn &cfg, nil' },
+                { kind: 'add', text: '}' },
+              ],
+            },
+          ],
+        },
+      ],
+      issues: [
+        {
+          id: 'I1',
+          type: 'architecture',
+          severity: 'major',
+          expected_issue: 'L’erreur renvoyée par os.ReadFile est ignorée avec « _ ».',
+          why: 'Si le fichier est absent, data est vide et json.Unmarshal échoue avec un « unexpected end of JSON input » trompeur, au lieu de dire que le fichier est introuvable.',
+          ideal_fix: 'Lire data, err := os.ReadFile(path) et renvoyer fmt.Errorf("lecture de %s : %w", path, err) si err != nil.',
+          fixed_lines: ['\tdata, err := os.ReadFile(path)', '\tif err != nil {', '\t\treturn nil, err', '\t}'],
+        },
+      ],
+    },
+  },
 ]
 
 /** Entrée la plus proche des paramètres, à défaut de correspondance exacte. */
@@ -583,20 +846,20 @@ export function pickCatalogEntry(
   params: { language: Language; difficulty: Difficulty; category: Category },
   random: () => number = Math.random,
 ): CatalogEntry {
-  // Le niveau prime : un débutant ne doit jamais recevoir un scénario de niveau 5.
-  const sameLevel = MOCK_CATALOG.filter((e) => e.difficulty === params.difficulty)
-  const tiers = [
-    sameLevel.filter((e) => e.language === params.language && e.category === params.category),
-    sameLevel.filter((e) => e.category === params.category),
-    sameLevel.filter((e) => e.language === params.language),
-    sameLevel,
-    MOCK_CATALOG.filter(
-      (e) => e.language === params.language && e.category === params.category,
-    ),
-    MOCK_CATALOG.filter((e) => e.category === params.category),
-    MOCK_CATALOG.filter((e) => e.language === params.language),
-    MOCK_CATALOG,
-  ]
-  const pool = tiers.find((t) => t.length > 0)!
+  // Le langage prime : un joueur qui choisit Rust doit lire du Rust. Chaque
+  // langage a au moins une entrée de niveau 1 ou 2 (test dédié).
+  const sameLanguage = MOCK_CATALOG.filter((e) => e.language === params.language)
+  const candidates = sameLanguage.length > 0 ? sameLanguage : MOCK_CATALOG
+  // Puis le niveau le plus proche, en dessous plutôt qu'au-dessus : un débutant
+  // ne doit pas recevoir un scénario expert.
+  const wanted = Number(params.difficulty)
+  const distance = (e: CatalogEntry) => {
+    const gap = Number(e.difficulty) - wanted
+    return gap > 0 ? gap + 0.5 : -gap
+  }
+  const best = Math.min(...candidates.map(distance))
+  const closest = candidates.filter((e) => distance(e) === best)
+  const sameCategory = closest.filter((e) => e.category === params.category)
+  const pool = sameCategory.length > 0 ? sameCategory : closest
   return pool[Math.floor(random() * pool.length)]!
 }

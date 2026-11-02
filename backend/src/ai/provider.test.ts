@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { MOCK_CATALOG, pickCatalogEntry } from './mock-catalog.js'
+import { MOCK_CATALOG, localizedScenario, pickCatalogEntry } from './mock-catalog.js'
+import { DIFFICULTIES, LANGUAGES } from './types.js'
 import { createMockProvider } from './provider.js'
 import { buildScenario } from './scenario-builder.js'
 
@@ -12,13 +13,37 @@ describe('pickCatalogEntry', () => {
     expect(entry.category).toBe(target.category)
   })
 
-  it.each(['1', '2', '3', '4', '5'] as const)('respecte le niveau %s avant le langage et la catégorie', (level) => {
-    const entry = pickCatalogEntry(
-      { language: 'rust', difficulty: level, category: 'race_condition' },
-      () => 0,
-    )
-    expect(entry.difficulty).toBe(level)
+  // Symptôme d'origine : un joueur qui demandait du Rust recevait du Java.
+  it.each(LANGUAGES)('sert toujours un scénario en %s, quel que soit le niveau', (language) => {
+    for (const difficulty of DIFFICULTIES) {
+      const entry = pickCatalogEntry({ language, difficulty, category: 'performance' }, () => 0)
+      expect(entry.language).toBe(language)
+    }
   })
+
+  it.each(LANGUAGES)('propose un scénario de niveau 1 ou 2 en %s', (language) => {
+    expect(MOCK_CATALOG.some((e) => e.language === language && Number(e.difficulty) <= 2)).toBe(true)
+  })
+
+  it('préfère un niveau inférieur à un niveau supérieur', () => {
+    // Python existe aux niveaux 1 et 4 : un niveau 3 doit tomber sur le 4 (le plus proche),
+    // un niveau 2 sur le 1 (plus proche, et en dessous).
+    expect(pickCatalogEntry({ language: 'python', difficulty: '2', category: 'performance' }).difficulty).toBe('1')
+    expect(pickCatalogEntry({ language: 'python', difficulty: '3', category: 'performance' }).difficulty).toBe('4')
+  })
+
+  it('retient le niveau exact quand il existe', () => {
+    const entry = pickCatalogEntry({ language: 'go', difficulty: '5', category: 'performance' })
+    expect(entry.difficulty).toBe('5')
+  })
+
+  it.each(MOCK_CATALOG.map((e) => [e.language, e.difficulty, e] as const))(
+    'l’entrée %s de niveau %s passe la validation du constructeur',
+    (_, __, entry) => {
+      expect(() => buildScenario(structuredClone(entry.scenario))).not.toThrow()
+      expect(() => buildScenario(localizedScenario(entry, 'en'))).not.toThrow()
+    },
+  )
 
   it('renvoie toujours une entrée, même sans correspondance', () => {
     const entry = pickCatalogEntry(
