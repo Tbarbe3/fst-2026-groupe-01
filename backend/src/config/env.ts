@@ -6,8 +6,9 @@ function required(name: string): string {
   return value
 }
 
+// Compose transmet `${VAR:-}` comme chaîne vide : elle vaut absence.
 function optional(name: string, fallback: string): string {
-  return process.env[name] ?? fallback
+  return process.env[name] || fallback
 }
 
 export const env = {
