@@ -16,6 +16,7 @@ import { pool } from './db/pool.js'
 import { createErrorHandler } from './error-handler.js'
 import { challengesRoutes } from './routes/challenges.js'
 import { healthRoutes } from './routes/health.js'
+import { authResetRoutes } from './routes/auth-reset.js'
 
 /**
  * Construit l'instance sans la démarrer : les tests peuvent ainsi la monter
@@ -70,6 +71,8 @@ export async function buildApp(): Promise<FastifyInstance> {
       return session?.user.id ?? null
     },
   })
+
+  await app.register(authResetRoutes, { prefix: '/api', pool })
 
   app.all('/api/auth/*', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
     // Schéma déduit de X-Forwarded-Proto et non codé en dur : Better Auth

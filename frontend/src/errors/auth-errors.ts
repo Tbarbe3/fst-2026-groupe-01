@@ -23,6 +23,12 @@ export function translateAuthError(
       return translate(locale, 'errors.passwordTooShort', { min: MIN_PASSWORD_LENGTH })
     case 'PASSWORD_TOO_LONG':
       return translate(locale, 'errors.passwordTooLong', { max: MAX_PASSWORD_LENGTH })
+    case 'INVALID_TOKEN':
+      return translate(locale, 'errors.invalidToken')
+    case 'USER_NOT_FOUND':
+      return translate(locale, 'errors.userNotFound')
+    case 'PASSWORD_SAME_AS_CURRENT':
+      return translate(locale, 'errors.passwordSameAsCurrent')
     case 'WEAK_PASSWORD':
       // Message du serveur, rédigé en français : repli sur la règle localisée en anglais.
       return locale === 'fr' && error.message ? error.message : describePasswordPolicy(locale)

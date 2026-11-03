@@ -15,6 +15,7 @@ export const authClientMock = {
   deleteUser: vi.fn(),
   updateUser: vi.fn(),
   changePassword: vi.fn(),
+  resetPassword: vi.fn(),
   signIn: { email: vi.fn() },
   signUp: { email: vi.fn() },
 }

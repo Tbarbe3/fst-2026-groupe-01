@@ -334,6 +334,45 @@ a:hover {
   text-decoration: underline;
 }
 
+.forgot-password-link-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.forgot-password-link {
+  font-size: 0.875rem;
+  color: var(--link);
+  text-decoration: underline;
+  transition: opacity 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  opacity: 0.8;
+}
+
+.reset-demo-notice {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.reset-demo-notice p {
+  margin-bottom: 0.75rem;
+}
+
+.btn-reset-direct {
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+
 .dashboard {
   text-align: center;
   padding: 2.5rem;
