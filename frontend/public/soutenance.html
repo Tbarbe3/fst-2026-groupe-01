@@ -31,7 +31,7 @@
   html, body { height: 100%; overflow: hidden; }
   body {
     background: var(--bg); color: var(--text);
-    font-family: 'Outfit', system-ui, sans-serif; font-size: clamp(16px, 1.6vw, 26px);
+    font-family: 'Outfit', system-ui, sans-serif; font-size: clamp(13px, min(1.65vw, 2.75vh), 30px);
     transition: background .4s, color .4s;
   }
   body::before, body::after {
@@ -44,7 +44,7 @@
 
   .slide {
     position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column;
-    justify-content: center; padding: 6vh 8vw; opacity: 0; visibility: hidden;
+    justify-content: center; align-items: center; text-align: center; padding: 5vh 6vw; opacity: 0; visibility: hidden;
     transform: translateX(4vw); transition: opacity .6s ease, transform .6s ease, visibility .6s;
   }
   .slide.active { opacity: 1; visibility: visible; transform: none; }
@@ -65,11 +65,16 @@
   .grad { background: linear-gradient(90deg, #818cf8, #c084fc, #818cf8); background-size: 200% auto;
     -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 6s linear infinite; }
   @keyframes shine { to { background-position: 200% center; } }
-  p.lead { color: var(--text-muted); font-size: 1.15em; max-width: 48em; margin-top: .8em; }
+  p.lead { color: var(--text-muted); font-size: 1.05em; max-width: 48em; margin: .9em auto 0; }
   .muted { color: var(--text-muted); }
   code, .mono { font-family: 'JetBrains Mono', monospace; font-size: .85em; }
 
-  .grid { display: grid; gap: 1.1em; grid-template-columns: repeat(auto-fit, minmax(13em, 1fr)); }
+  .grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.1em; width: 100%; max-width: 64em; }
+  .grid > * { flex: 0 1 calc((100% - 2.2em) / 3); text-align: left; }
+  /* 2, 4 bulles : deux par ligne, jamais 3 + 1 */
+  .grid:has(> :nth-child(2):last-child) > *,
+  .grid:has(> :nth-child(4):last-child) > * { flex-basis: calc((100% - 1.1em) / 2); }
+  .grid:has(> :nth-child(4):last-child) { max-width: 52em; }
   .card {
     background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 1.1em 1.3em;
     box-shadow: 0 25px 50px -20px rgba(0,0,0,.45); transition: transform .3s, border-color .3s;
@@ -84,6 +89,7 @@
     border: 1px solid var(--border); font-size: .75em; margin: .15em; }
 
   /* Faux diff façon GitHub */
+    .diff { width: 100%; max-width: 52em; text-align: left; }
   .diff { background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
     font-family: 'JetBrains Mono', monospace; font-size: .72em; }
   .diff .head { padding: .6em 1em; border-bottom: 1px solid var(--border); color: var(--text-muted); }
@@ -98,14 +104,14 @@
   .slide.active .comment { animation: rise .6s 2s forwards; }
 
   /* Score */
-  .score-wrap { display: flex; gap: 3em; align-items: center; flex-wrap: wrap; }
+  .score-wrap { justify-content: center; width: 100%; max-width: 56em; display: flex; gap: 3em; align-items: center; flex-wrap: wrap; }
   .ring { width: 11em; height: 11em; position: relative; }
   .ring svg { transform: rotate(-90deg); }
   .ring circle { fill: none; stroke-width: 10; }
   .ring .track { stroke: var(--border); }
   .ring .val { stroke: url(#g); stroke-linecap: round; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 1.6s ease .3s; }
   .ring .num { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.6em; font-weight: 800; }
-  .bars { flex: 1; min-width: 16em; }
+  .bars { flex: 1; min-width: 16em; text-align: left; }
   .bar { margin: .7em 0; }
   .bar .lbl { display: flex; justify-content: space-between; font-size: .85em; margin-bottom: .3em; }
   .bar .t { height: .6em; background: var(--raised); border-radius: 999px; overflow: hidden; }
@@ -119,7 +125,8 @@
   .slide.active .arrow { animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: .35; transform: translateX(4px); } }
 
-  .flow { display: flex; gap: .6em; align-items: stretch; flex-wrap: wrap; }
+  .flow { display: flex; gap: .8em; align-items: stretch; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 70em; }
+  .flow .step { text-align: left; }
   .flow .step { flex: 1; min-width: 9em; }
 
   .demo-badge { display: inline-flex; align-items: center; gap: .5em; padding: .4em 1em; border-radius: 999px;
@@ -133,7 +140,6 @@
   .hud button { background: var(--raised); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
     padding: .4em .8em; font: inherit; cursor: pointer; }
   .hud button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
-  .speaker { position: fixed; bottom: 1.2em; left: 1.5em; z-index: 5; font-size: .7em; color: var(--text-muted); }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -161,8 +167,8 @@
     <div class="card anim"><span class="icon">⚖️</span><h3>Asymétrie</h3><p>On apprend à écrire du code, presque jamais à l'auditer.</p></div>
     <div class="card anim"><span class="icon">🧩</span><h3>Pas d'outil</h3><p>LeetCode teste l'algorithmique, jamais la posture de relecteur.</p></div>
     <div class="card anim"><span class="icon">💬</span><h3>Peu de feedback</h3><p>Les seniors manquent de temps pour corriger les revues des juniors.</p></div>
+    <div class="card anim"><span class="icon">🎯</span><h3>Pour qui</h3><p>Développeurs juniors et intermédiaires (1 à 4 ans) qui veulent progresser en revue de code et en sécurité.</p></div>
   </div>
-  <p class="lead anim">🎯 <b>Pour qui :</b> développeurs juniors et intermédiaires (1 à 4 ans), qui veulent progresser en revue de code et en sécurité.</p>
 </section>
 
 <!-- 3. Solution -->
@@ -238,7 +244,7 @@
     <div class="card step anim"><span class="icon">📝</span><h3>Prompt + schéma</h3><p>Sortie JSON contrainte : fichiers, lignes typées, anomalies.</p></div>
     <div class="card step anim"><span class="icon">🔢</span><h3>Numérotation serveur</h3><p>Le modèle ne donne aucun numéro de ligne : un LLM compte mal.</p></div>
     <div class="card step anim"><span class="icon">🛡️</span><h3>Validation</h3><p>Refus si une anomalie n'a pas de ligne ou si un commentaire trahit la réponse.</p></div>
-    <div class="card step anim"><span class="icon">🔁</span><h3>Repli</h3><p>2ᵉ essai plus froid (0,9 → 0,4), puis catalogue écrit à la main.</p></div>
+    <div class="card step anim"><span class="icon">🔁</span><h3>Plan B</h3><p>Si Gemini échoue : 2ᵉ essai moins créatif (température 0,9 → 0,4), puis un scénario écrit à la main.</p></div>
   </div>
 </section>
 
@@ -279,8 +285,8 @@
     </div>
     <div class="bars">
       <div class="bar"><div class="lbl"><span>Détection, pondérée par la criticité (3/2/1)</span><b>60</b></div><div class="t"><div class="f" data-w="100"></div></div></div>
-      <div class="bar"><div class="lbl"><span>Clarté des explications (juge)</span><b>30</b></div><div class="t"><div class="f" data-w="50"></div></div></div>
-      <div class="bar"><div class="lbl"><span>Précision (−5 par faux positif)</span><b>10</b></div><div class="t"><div class="f" data-w="17"></div></div></div>
+      <div class="bar"><div class="lbl"><span>Clarté des explications (juge)</span><b>30</b></div><div class="t"><div class="f" data-w="70"></div></div></div>
+      <div class="bar"><div class="lbl"><span>Précision (−5 par faux positif)</span><b>10</b></div><div class="t"><div class="f" data-w="30"></div></div></div>
       <p class="muted" style="font-size:.75em;margin-top:.8em">Approuver une PR sans commentaire rapporte 0 : pas de point de précision gratuit.</p>
     </div>
   </div>
@@ -328,12 +334,12 @@
   <div class="kicker anim">Le bilan</div>
   <h2 class="anim">Ce qu'on ferait <span class="grad">autrement</span></h2>
   <div class="grid">
-    <div class="card anim"><span class="icon">🧯</span><h3>Le repli IA dès le jour 1</h3><p>Liste de modèles et juge simulé sont arrivés après les pannes. On les poserait avant le premier appel.</p></div>
+    <div class="card anim"><span class="icon">🧯</span><h3>Le plan B de l'IA dès le jour 1</h3><p>Liste de modèles et juge simulé sont arrivés après les pannes. On les poserait avant le premier appel.</p></div>
     <div class="card anim"><span class="icon">🚀</span><h3>Déployer tôt</h3><p>Les pièges Better Auth / Traefik sont apparus en prod. Un déploiement dès la première semaine les aurait révélés plus tôt.</p></div>
     <div class="card anim"><span class="icon">📐</span><h3>Figer le modèle de données</h3><p>Les niveaux sont passés de « junior / senior » à 1–5 en cours de route : une migration évitable.</p></div>
     <div class="card anim"><span class="icon">📝</span><h3>AGENTS.md vivant</h3><p>Le tenir à jour à chaque piège, pas à la fin : c'est lui qui évite aux agents de répéter les erreurs.</p></div>
   </div>
-  <p class="lead anim">Et ensuite : parcours progressifs, classement, un scénario de repli par langage et par niveau.</p>
+  <p class="lead anim">Et ensuite : parcours progressifs, classement, un scénario de secours par langage et par niveau.</p>
 </section>
 
 <!-- 14. Fin -->
@@ -343,7 +349,6 @@
   <p class="anim" style="margin-top:1.2em"><span class="pill">🌐 codehow.thomasbarbe.com</span> <span class="pill">📂 github.com/Tbarbe3/fst-2026-groupe-01</span></p>
 </section>
 
-<div class="speaker" id="speaker"></div>
 <div class="hud">
   <button type="button" id="theme" aria-label="Changer de thème">🌗</button>
   <button type="button" id="prev" aria-label="Diapositive précédente">←</button>
@@ -380,7 +385,6 @@
     if (s.hasAttribute('data-score')) animateScore(s)
     document.getElementById('progress').style.width = ((i + 1) / slides.length) * 100 + '%'
     document.getElementById('count').textContent = `${i + 1} / ${slides.length}`
-    document.getElementById('speaker').textContent = '🎤 ' + (s.dataset.speaker || '')
     history.replaceState(null, '', '#' + (i + 1))
   }
 
