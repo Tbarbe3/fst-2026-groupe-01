@@ -104,4 +104,20 @@ describe('AccountModal', () => {
     expect(screen.getByText('Les nouveaux mots de passe ne correspondent pas.')).toBeInTheDocument()
     expect(authClientMock.changePassword).not.toHaveBeenCalled()
   })
+
+  it('refuse un nouveau mot de passe identique à l’ancien sans appeler le serveur', async () => {
+    const user = userEvent.setup()
+    renderModal()
+
+    await user.click(screen.getAllByRole('button', { name: 'Modifier' })[1]!)
+    await user.type(screen.getByLabelText('Mot de passe actuel'), 'Identique!123')
+    await user.type(screen.getByLabelText('Nouveau mot de passe'), 'Identique!123')
+    await user.type(screen.getByLabelText('Confirmer le nouveau mot de passe'), 'Identique!123')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(
+      screen.getByText('Le nouveau mot de passe doit être différent de l’ancien.'),
+    ).toBeInTheDocument()
+    expect(authClientMock.changePassword).not.toHaveBeenCalled()
+  })
 })

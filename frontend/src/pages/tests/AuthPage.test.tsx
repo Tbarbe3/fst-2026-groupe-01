@@ -8,14 +8,20 @@ import AuthPage from '../AuthPage.tsx'
 
 vi.mock('../../auth', () => ({ authClient: authClientMock }))
 
-function renderAuth(mode: 'login' | 'register') {
+function renderAuth(
+  mode: 'login' | 'register' | 'forgot-password' | 'reset-password',
+  initialEntries = ['/auth'],
+) {
   const router = createMemoryRouter(
     [
       { path: '/auth', element: <AuthPage mode={mode} /> },
+      { path: '/login', element: <AuthPage mode="login" /> },
+      { path: '/forgot-password', element: <AuthPage mode="forgot-password" /> },
+      { path: '/reset-password', element: <AuthPage mode="reset-password" /> },
       { path: '/', element: <p>Page d'accueil</p> },
       { path: '/dashboard', element: <p>Tableau de bord</p> },
     ],
-    { initialEntries: ['/auth'] },
+    { initialEntries },
   )
   return render(<RouterProvider router={router} />)
 }
@@ -81,6 +87,12 @@ describe('AuthPage', () => {
       renderAuth('login')
       const backLink = screen.getByRole('link', { name: /Retour à l'accueil/i })
       expect(backLink).toHaveAttribute('href', '/')
+    })
+
+    it('propose un lien vers le mot de passe oublié', () => {
+      renderAuth('login')
+      const forgotLink = screen.getByRole('link', { name: 'Mot de passe oublié ?' })
+      expect(forgotLink).toHaveAttribute('href', '/forgot-password')
     })
 
     it('redirige vers la page d’accueil après succès', async () => {
@@ -318,6 +330,95 @@ describe('AuthPage', () => {
       const alert = await screen.findByRole('alert')
       expect(alert).toHaveTextContent('Vérifiez les informations saisies.')
       expect(alert).not.toHaveTextContent('Database')
+    })
+  })
+
+  describe('mot de passe oublié', () => {
+    it('demande uniquement l’adresse e-mail', () => {
+      renderAuth('forgot-password')
+      expect(screen.getByLabelText('Adresse e-mail')).toBeInTheDocument()
+      expect(screen.queryByLabelText('Mot de passe')).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Pseudonyme')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Envoyer les instructions' })).toBeInTheDocument()
+    })
+
+    it('refuse une adresse vide', async () => {
+      const user = userEvent.setup()
+      renderAuth('forgot-password')
+
+      await user.click(screen.getByRole('button', { name: 'Envoyer les instructions' }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent("L'adresse e-mail est requise.")
+    })
+
+    it('affiche le message de confirmation et le lien direct après soumission', async () => {
+      const user = userEvent.setup()
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          resetUrl: '/reset-password?token=test-token-123',
+          message: 'Lien préparé',
+        }),
+      }))
+
+      renderAuth('forgot-password')
+
+      await user.type(screen.getByLabelText('Adresse e-mail'), 'joueur@exemple.fr')
+      await user.click(screen.getByRole('button', { name: 'Envoyer les instructions' }))
+
+      expect(await screen.findByRole('status')).toHaveTextContent(
+        'les instructions ont été préparées',
+      )
+      const directLink = screen.getByRole('link', { name: 'Définir un nouveau mot de passe' })
+      expect(directLink).toHaveAttribute('href', '/reset-password?token=test-token-123')
+
+      vi.unstubAllGlobals()
+    })
+  })
+
+  describe('réinitialisation de mot de passe', () => {
+    it('signale un jeton manquant quand aucun token n’est dans l’URL', () => {
+      renderAuth('reset-password', ['/auth'])
+      expect(screen.getByText('Le jeton de réinitialisation est manquant ou invalide.')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Demander un nouveau lien' })).toHaveAttribute(
+        'href',
+        '/forgot-password',
+      )
+    })
+
+    it('affiche les champs de mot de passe quand un jeton est présent', () => {
+      renderAuth('reset-password', ['/auth?token=valid-token'])
+      expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument()
+      expect(screen.getByLabelText('Confirmez le mot de passe')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Modifier le mot de passe' })).toBeInTheDocument()
+    })
+
+    it('refuse deux mots de passe différents', async () => {
+      const user = userEvent.setup()
+      renderAuth('reset-password', ['/auth?token=valid-token'])
+
+      await user.type(screen.getByLabelText('Mot de passe'), 'SuperSecret!1')
+      await user.type(screen.getByLabelText('Confirmez le mot de passe'), 'AutreChose!1')
+      await user.click(screen.getByRole('button', { name: 'Modifier le mot de passe' }))
+
+      expect(screen.getByRole('alert')).toHaveTextContent('Les deux mots de passe ne correspondent pas.')
+      expect(authClientMock.resetPassword).not.toHaveBeenCalled()
+    })
+
+    it('appelle authClient.resetPassword et redirige vers /login en cas de succès', async () => {
+      const user = userEvent.setup()
+      authClientMock.resetPassword.mockResolvedValue({ error: null })
+      renderAuth('reset-password', ['/auth?token=token-abc'])
+
+      await user.type(screen.getByLabelText('Mot de passe'), 'NouveauSecret!1')
+      await user.type(screen.getByLabelText('Confirmez le mot de passe'), 'NouveauSecret!1')
+      await user.click(screen.getByRole('button', { name: 'Modifier le mot de passe' }))
+
+      expect(authClientMock.resetPassword).toHaveBeenCalledWith({
+        newPassword: 'NouveauSecret!1',
+        token: 'token-abc',
+      })
     })
   })
 })

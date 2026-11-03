@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { ArrowLeft } from 'lucide-react'
 
 import { authClient } from '../auth'
@@ -14,43 +14,70 @@ import {
 import { useI18n } from '@/i18n'
 
 interface AuthPageProps {
-  mode: 'login' | 'register'
+  mode: 'login' | 'register' | 'forgot-password' | 'reset-password'
 }
 
 interface LocationState {
   from?: string
+  successMessage?: string
 }
 
 export default function AuthPage({ mode }: AuthPageProps) {
   const { locale, t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token') || ''
+
   const isLogin = mode === 'login'
+  const isRegister = mode === 'register'
+  const isForgotPassword = mode === 'forgot-password'
+  const isResetPassword = mode === 'reset-password'
+
+  const locationState = location.state as LocationState | null
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(locationState?.successMessage || '')
+  const [demoResetUrl, setDemoResetUrl] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  // `/login` et `/register` partagent cette position dans l'arbre : React
+  // `/login`, `/register`, etc. partagent cette position dans l'arbre : React
   // réutilise l'instance et l'état survit à la navigation. Ajusté pendant le
   // rendu et non dans un effet, pour qu'aucune erreur obsolète ne soit peinte.
   const [renderedMode, setRenderedMode] = useState(mode)
   if (renderedMode !== mode) {
     setRenderedMode(mode)
     setError('')
+    setSuccess(locationState?.successMessage || '')
+    setDemoResetUrl('')
     setPassword('')
     setPasswordConfirm('')
   }
 
   // La connexion n'applique que la longueur, pas la politique complète : un
   // mot de passe créé avant son renforcement doit continuer à fonctionner.
-  // Le serveur applique la même règle (cf. password-policy.ts côté backend).
   const validate = (): string | null => {
+    if (isForgotPassword) {
+      if (!email.trim()) return t('auth.emailRequired')
+      return null
+    }
+
+    if (isResetPassword) {
+      if (!token) return t('auth.resetPasswordMissingToken')
+      const passwordError = validatePassword(password, locale)
+      if (passwordError) return passwordError
+      if (password !== passwordConfirm) {
+        return t('auth.passwordsDoNotMatch')
+      }
+      return null
+    }
+
     if (!email.trim()) return t('auth.emailRequired')
-    if (!isLogin && !name.trim()) return t('auth.nameRequired')
+    if (isRegister && !name.trim()) return t('auth.nameRequired')
 
     if (isLogin) {
       if (password.length < MIN_PASSWORD_LENGTH) {
@@ -77,9 +104,44 @@ export default function AuthPage({ mode }: AuthPageProps) {
     }
 
     setError('')
+    setSuccess('')
     setIsLoading(true)
 
     try {
+      if (isForgotPassword) {
+        const response = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim() }),
+        })
+        const data = await response.json()
+        if (!response.ok) {
+          setError(data.message || t('common.genericError'))
+          return
+        }
+        setSuccess(t('auth.forgotPasswordSent'))
+        if (data.resetUrl) {
+          setDemoResetUrl(data.resetUrl)
+        }
+        return
+      }
+
+      if (isResetPassword) {
+        const { error: resetError } = await authClient.resetPassword({
+          newPassword: password,
+          token,
+        })
+        if (resetError) {
+          setError(translateAuthError(resetError, 'errors.generic', locale))
+          return
+        }
+        await navigate('/login', {
+          replace: true,
+          state: { successMessage: t('auth.resetPasswordSuccess') },
+        })
+        return
+      }
+
       const { error: authError } = isLogin
         ? await authClient.signIn.email({
             email: email.trim(),
@@ -92,9 +154,8 @@ export default function AuthPage({ mode }: AuthPageProps) {
           })
 
       if (authError) {
-        // À la connexion, message volontairement indifférencié : distinguer
-        // « compte inconnu » de « mot de passe incorrect » révélerait quelles
-        // adresses sont inscrites.
+        // Message volontairement indifférencié à la connexion : distinguer
+        // « compte inconnu » de « mot de passe incorrect » révélerait qui est inscrit.
         setError(
           isLogin
             ? t('auth.invalidCredentials')
@@ -103,7 +164,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
         return
       }
 
-      const from = (location.state as LocationState | null)?.from
+      const from = locationState?.from
       await navigate(from && from !== '/dashboard' ? from : '/', { replace: true })
     } catch (err: unknown) {
       setError(describeNetworkError(err, locale) ?? t('common.genericError'))
@@ -150,7 +211,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
   )
 
   return (
-    <div className={`auth-container${isLogin ? '' : ' auth-container-wide'}`}>
+    <div className={`auth-container${isLogin || isForgotPassword || isResetPassword ? '' : ' auth-container-wide'}`}>
       <div className="auth-card">
         <div className="auth-top-nav">
           <Link to="/" className="btn-back-home" aria-label={t('common.backToHome')}>
@@ -168,17 +229,28 @@ export default function AuthPage({ mode }: AuthPageProps) {
           <p>
             {isLogin
               ? t('auth.loginTitle')
-              : t('auth.registerTitle')}
+              : isRegister
+                ? t('auth.registerTitle')
+                : isForgotPassword
+                  ? t('auth.forgotPasswordTitle')
+                  : t('auth.resetPasswordTitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate>
-          {isLogin ? (
+          {isLogin && (
             <>
               {emailField}
               {passwordField}
+              <div className="forgot-password-link-container">
+                <Link to="/forgot-password" className="forgot-password-link">
+                  {t('auth.forgotPasswordLink')}
+                </Link>
+              </div>
             </>
-          ) : (
+          )}
+
+          {isRegister && (
             <>
               <div className="form-row">
                 <div className="form-group">
@@ -194,9 +266,7 @@ export default function AuthPage({ mode }: AuthPageProps) {
                     disabled={isLoading}
                     maxLength={60}
                   />
-                  <small className="form-hint">
-                    {t('auth.nameHint')}
-                  </small>
+                  <small className="form-hint">{t('auth.nameHint')}</small>
                 </div>
                 {emailField}
               </div>
@@ -223,28 +293,89 @@ export default function AuthPage({ mode }: AuthPageProps) {
             </>
           )}
 
-          {/* `data-visible` pilote une transition de hauteur : aucun espace
-              n'est réservé quand il n'y a pas d'erreur. */}
-          <div className="form-feedback" data-visible={Boolean(error)}>
+          {isForgotPassword && (
+            <>
+              {emailField}
+              {demoResetUrl && (
+                <div className="reset-demo-notice">
+                  <p>{t('auth.forgotPasswordDemoNotice')}</p>
+                  <Link to={demoResetUrl} className="btn btn-primary btn-reset-direct">
+                    {t('auth.forgotPasswordDirectBtn')}
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
+
+          {isResetPassword && (
+            <>
+              {!token ? (
+                <div className="reset-demo-notice">
+                  <p>{t('auth.resetPasswordMissingToken')}</p>
+                  <Link to="/forgot-password" className="forgot-password-link">
+                    {t('auth.requestNewResetLink')}
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {passwordField}
+                  <div className="form-group">
+                    <label htmlFor="passwordConfirm">
+                      {t('auth.passwordConfirmLabel')}
+                    </label>
+                    <input
+                      type="password"
+                      id="passwordConfirm"
+                      className="form-control"
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      value={passwordConfirm}
+                      onChange={(e) => setPasswordConfirm(e.target.value)}
+                      disabled={isLoading}
+                      maxLength={128}
+                    />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {/* Hauteur animée sans espace réservé si aucun message n'est actif. */}
+          <div className="form-feedback" data-visible={Boolean(error || success)}>
             <div>
               {error && <FeedbackMessage kind="error">{error}</FeedbackMessage>}
+              {success && !error && (
+                <FeedbackMessage kind="success">{success}</FeedbackMessage>
+              )}
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={isLoading}>
-            {isLoading
-              ? t('auth.pleaseWait')
-              : isLogin
-                ? t('auth.signInBtn')
-                : t('auth.signUpBtn')}
-          </button>
+          {(!isResetPassword || Boolean(token)) && (!isForgotPassword || !demoResetUrl) && (
+            <button type="submit" className="btn btn-primary" disabled={isLoading}>
+              {isLoading
+                ? t('auth.pleaseWait')
+                : isLogin
+                  ? t('auth.signInBtn')
+                  : isRegister
+                    ? t('auth.signUpBtn')
+                    : isForgotPassword
+                      ? t('auth.forgotPasswordSubmitBtn')
+                      : t('auth.resetPasswordBtn')}
+            </button>
+          )}
         </form>
 
         <div className="toggle-mode">
-          <span>{isLogin ? t('auth.noAccount') : t('auth.hasAccount')}</span>
-          <Link to={isLogin ? '/register' : '/login'}>
-            {isLogin ? t('auth.signUpBtn') : t('auth.signInBtn')}
-          </Link>
+          {isLogin || isRegister ? (
+            <>
+              <span>{isLogin ? t('auth.noAccount') : t('auth.hasAccount')}</span>
+              <Link to={isLogin ? '/register' : '/login'}>
+                {isLogin ? t('auth.signUpBtn') : t('auth.signInBtn')}
+              </Link>
+            </>
+          ) : (
+            <Link to="/login">{t('auth.backToLogin')}</Link>
+          )}
         </div>
       </div>
     </div>

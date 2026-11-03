@@ -9,6 +9,7 @@ describe('translateAuthError', () => {
     ['USER_ALREADY_EXISTS', 'Un compte existe déjà avec cette adresse e-mail.'],
     ['PASSWORD_TOO_SHORT', 'Le mot de passe doit contenir au moins 8 caractères.'],
     ['PASSWORD_TOO_LONG', 'Le mot de passe est trop long (128 caractères maximum).'],
+    ['PASSWORD_SAME_AS_CURRENT', 'Le nouveau mot de passe doit être différent de l’ancien.'],
   ])('traduit %s', (code, expected) => {
     expect(translateAuthError({ code }, 'errors.generic', 'fr')).toBe(expected)
   })

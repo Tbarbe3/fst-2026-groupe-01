@@ -76,6 +76,10 @@ export default function AccountModal({ onClose }: { onClose: () => void }) {
             setEditError(t('account.fillAllFields'))
             return
         }
+        if (editPassCurrent === editPassNew) {
+            setEditError(t('errors.passwordSameAsCurrent'))
+            return
+        }
         if (editPassNew !== editPassConfirm) {
             setEditError(t('account.passwordsMismatch'))
             return
